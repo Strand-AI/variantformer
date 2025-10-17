@@ -1,0 +1,62 @@
+A549: 0
+GM23248: 2
+HepG2: 3
+K562: 4
+NCI-H460: 5
+Panc1: 6
+adipose - subcutaneous: 7
+adipose - visceral (omentum): 8
+adrenal gland: 9
+artery - aorta: 10
+artery - coronary: 11
+artery - tibial: 12
+bladder: 13
+blood: 14
+brain - amygdala: 15
+brain - anterior cingulate cortex (ba24): 16
+brain - caudate (basal ganglia): 17
+brain - cerebellar hemisphere: 18
+brain - cerebellum: 19
+brain - cortex: 20
+brain - frontal cortex (ba9): 21
+brain - hippocampus: 22
+brain - hypothalamus: 23
+brain - nucleus accumbens (basal ganglia): 24
+brain - putamen (basal ganglia): 25
+brain - spinal cord (cervical c-1): 26
+brain - substantia nigra: 27
+breast - mammary tissue: 28
+cells - cultured fibroblasts: 29
+cells - ebv-transformed lymphocytes: 30
+cervix - ectocervix: 31
+cervix - endocervix: 32
+colon - sigmoid: 33
+colon - transverse: 34
+esophagus - gastroesophageal junction: 35
+esophagus - mucosa: 36
+esophagus - muscularis: 37
+fallopian tube: 38
+heart - atrial appendage: 39
+heart - left ventricle: 40
+kidney - cortex: 41
+kidney - medulla: 42
+liver: 43
+lung: 44
+lcl: 45
+minor salivary gland: 46
+muscle - skeletal: 47
+nerve - tibial: 48
+ovary: 49
+pancreas: 50
+pituitary: 51
+prostate: 52
+skin - not sun exposed (suprapubic): 53
+skin - sun exposed (lower leg): 54
+small intestine - terminal ileum: 55
+spleen: 56
+stomach: 57
+testis: 58
+thyroid: 59
+uterus: 60
+vagina: 61
+whole blood: 62

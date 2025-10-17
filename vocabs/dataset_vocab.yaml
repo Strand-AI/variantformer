@@ -1,0 +1,40 @@
+ADNI:
+  cre_location: _artifacts/ADNI_v_bpe_500_mixed_data_split
+  gene_location: _artifacts/MAGE_gene_based_study_preprocessed_only_gene_300kb_all_genes_data
+  gene_id_column: gencode_v24_gene_id-ADNI
+MAGE:
+  cre_location: _artifacts/MAGE_v_bpe_500_mixed_data_split
+  gene_location: _artifacts/MAGE_gene_based_study_preprocessed_only_gene_300kb_all_genes_data
+  gene_id_column: gencode_v24_gene_id-MAGE
+GTEx:
+  cre_location: _artifacts/GTEx_v_bpe_500_mixed_data_split
+  gene_location: _artifacts/GTEx_gene_based_study_preprocessed_only_gene_300kb_all_genes_data
+  gene_id_column: gencode_v24_gene_id-GTEx
+ENCODE:
+  cre_location: _artifacts/cell_lines_v_bpe_500_mixed_data_split
+  gene_location: _artifacts/MAGE_gene_based_study_preprocessed_only_gene_300kb_all_genes_data
+  gene_id_column: gencode_v24_gene_id-ENCODE
+REF_HG38:
+  cre_location: _artifacts/reference_genomes/data_split/hg38/cres/data_split
+  gene_location: _artifacts/reference_genomes/data/hg38/genes/data/
+  sample_name: hg38
+EAS:
+  cre_location: _artifacts/reference_genomes/data_split/eas/cres/data_split
+  gene_location: _artifacts/reference_genomes/data/eas/genes/data
+  sample_name: HG00404
+EUR:
+  cre_location: _artifacts/reference_genomes/data_split/eur/cres/data_split
+  gene_location: _artifacts/reference_genomes/data/eur/genes/data
+  sample_name: HG00096
+AFR:
+  cre_location: _artifacts/reference_genomes/data_split/afr/cres/data_split
+  gene_location: _artifacts/reference_genomes/data/afr/genes/data
+  sample_name: HG01879
+SAS:
+  cre_location: _artifacts/reference_genomes/data_split/sas/cres/data_split
+  gene_location: _artifacts/reference_genomes/data/sas/genes/data
+  sample_name: HG01589
+AMR:
+  cre_location: _artifacts/reference_genomes/data_split/amr/cres/data_split
+  gene_location: _artifacts/reference_genomes/data/amr/genes/data
+  sample_name: HG00551

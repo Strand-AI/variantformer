@@ -1,0 +1,5 @@
+**/.git
+**/.vscode
+
+# prefer mounting these as volumes
+_artifacts/

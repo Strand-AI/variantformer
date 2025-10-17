@@ -1,0 +1,405 @@
+#!/usr/bin/env python3
+"""
+Utilities for retrieving model assets
+"""
+
+import dataclasses
+import functools
+import logging
+import os.path
+import tempfile
+
+import boto3
+import duckdb
+
+
+logger = logging.getLogger(__name__)
+
+GENE_TISSUE_MANIFEST_FILE_PATH = (
+    "s3://czi-dnacell-staging/alzhimers_disease/v1/manifest.parquet"
+)
+GENE_CRE_MANIFEST_FILE_PATH = (
+    "s3://czi-dnacell-staging/model/common/cres_all_genes_manifest.parquet"
+)
+
+
+@dataclasses.dataclass
+class GeneRecord:
+    gene_id: str
+    file_path: str
+
+
+@dataclasses.dataclass
+class GeneTissueRecord:
+    tissue_id: int
+    gene_id: str
+    file_path: str
+
+
+class _BaseManifestLookup:
+    """
+    Search and download indexed files from S3 using a parquet manifest
+
+    Subclasses should define their index columns and record type.
+    """
+
+    # Subclasses should override these
+    INDEX_COLUMNS: tuple[str, ...] = ()
+    RECORD_CLASS: type = object
+    DEFAULT_MANIFEST_PATH: str = ""
+
+    def __init__(
+        self,
+        manifest_file_path: str = None,
+        tmp_dir: str = None,
+        aws_credentials: dict = None,
+    ):
+        """
+        Initialize the ManifestLookup with data from a parquet file.
+
+        Args:
+            manifest_file_path (str): Path to the parquet file. If None, uses the default for this class.
+            tmp_dir (str, optional): Directory for temporary files
+            aws_credentials (dict, optional): AWS credentials for S3 access
+        Raises:
+            FileNotFoundError: If the parquet file doesn't exist
+            ValueError: If the parquet file doesn't have required columns
+        """
+        manifest_file_path = manifest_file_path or self.DEFAULT_MANIFEST_PATH
+
+        if not manifest_file_path:
+            raise ValueError(
+                f"No manifest_file_path provided and no default set for {self.__class__.__name__}"
+            )
+
+        self.tmp_dir = tmp_dir or tempfile.mkdtemp()
+
+        if manifest_file_path.startswith("s3://"):
+            manifest_file_path_split = manifest_file_path.split("/")
+            self.bucket = manifest_file_path_split[2]
+            self.manifest_file_path = "/".join(manifest_file_path_split[3:])
+        else:
+            self.bucket = None
+            self.manifest_file_path = manifest_file_path
+        self._aws_credentials = aws_credentials or {}
+
+    @functools.cached_property
+    def s3(self):
+        client = boto3.client("s3", **self._aws_credentials)
+        return client
+
+    @functools.cached_property
+    def con(self):
+        self._load_manifest()
+        con = duckdb.connect(":memory:")
+        self._load_data(con)
+        return con
+
+    def get_unique(self, column_name: str) -> list[str]:
+        """
+        Get unique values for a specific index column.
+
+        Args:
+            column_name: Name of the column
+
+        Returns:
+            list: List of unique values
+        """
+        if column_name not in self.INDEX_COLUMNS:
+            raise ValueError(f"column_name must be one of {self.INDEX_COLUMNS}")
+
+        result = self.con.execute(
+            f"SELECT DISTINCT {column_name} FROM manifest"
+        ).fetchall()
+        logger.info(f"Found {len(result)} distinct values for {column_name}")
+        return [row[0] for row in result]
+
+    def _read_s3_file(self, s3_path: str) -> str:
+        try:
+            # Fetch the file from S3 to a local path
+            local_file_path = os.path.join(self.tmp_dir, s3_path)
+            if os.path.isfile(local_file_path):
+                # skip downloading if it's already there
+                # TODO: should this check hashes?
+                return local_file_path
+            local_dir = os.path.dirname(local_file_path)
+            os.makedirs(local_dir, exist_ok=True)
+            logger.info(f"Downloading from S3: s3://{self.bucket}/{s3_path}")
+
+            # this can be run in a multiprocessing context so we need to make sure
+            # the file either exists fully or doesn't exist fully
+            # we put it in the same dir so they're on the same filesystem
+            # so os.replace() works atomically
+            with tempfile.NamedTemporaryFile(
+                dir=local_dir, delete_on_close=False
+            ) as temp_file:
+                self.s3.download_fileobj(self.bucket, s3_path, temp_file)
+                temp_path = temp_file.name
+                os.replace(temp_path, local_file_path)  # this is an atomic operation
+            return local_file_path
+
+        except Exception as e:
+            logger.error(f"Failed to download from S3: {e}")
+            raise ValueError(f"S3 download failed: {e}")
+
+    def _load_manifest(self):
+        self.local_file_path = None
+        if self.bucket:
+            self.local_file_path = self._read_s3_file(self.manifest_file_path)
+        else:
+            self.local_file_path = self.manifest_file_path
+
+        if not self.local_file_path or not os.path.exists(self.local_file_path):
+            logger.error(f"Parquet file not found: {self.local_file_path}")
+            raise FileNotFoundError(f"Parquet file not found: {self.local_file_path}")
+
+    def _load_data(self, duck_db_con):
+        """Load the data from parquet file."""
+        try:
+            logger.info(f"Loading parquet file: {self.local_file_path}")
+
+            # Load and index the data
+            duck_db_con.execute(
+                f"CREATE TABLE manifest AS SELECT * FROM '{self.local_file_path}'"
+            )
+
+            # Validate required columns exist
+            columns = duck_db_con.execute("PRAGMA table_info(manifest)").fetchall()
+            column_names = {col[1] for col in columns}  # col[1] is the column name
+            required_columns = set(self.INDEX_COLUMNS) | {"file_path"}
+
+            missing_columns = required_columns - column_names
+            if missing_columns:
+                raise ValueError(f"Missing required columns: {missing_columns}")
+
+            logger.info(f"Validated schema - found columns: {column_names}")
+
+            # Create indexes for better performance
+            for column in self.INDEX_COLUMNS:
+                duck_db_con.execute(f"CREATE INDEX idx_{column} ON manifest({column})")
+
+        except Exception as e:
+            logger.error(f"Error loading manifest file: {e}")
+            raise ValueError(f"Error loading manifest file: {e}")
+
+    def _query(self, query_params: dict[str, int | str]) -> list:
+        """
+        Query the manifest for records matching the provided index values.
+
+        Args:
+            query_params: Dictionary mapping column names to values
+
+        Returns:
+            list[Record]: A list of Record objects matching the query
+        """
+        if not query_params:
+            raise ValueError(f"At least one of {self.INDEX_COLUMNS} must be provided.")
+
+        # Build column list for SELECT, maintaining order from RECORD_CLASS
+        select_columns = ", ".join(
+            field.name for field in dataclasses.fields(self.RECORD_CLASS)
+        )
+        query = [f"SELECT {select_columns} FROM manifest WHERE"]
+        params = []
+        conditions = []
+
+        for column in self.INDEX_COLUMNS:
+            if column in query_params:
+                value = query_params[column]
+                conditions.append(f"{column} = ?")
+                params.append(value)
+
+        query.append(" AND ".join(conditions))
+        result = self.con.execute(" ".join(query), params).fetchall()
+
+        # Convert to list of Record objects
+        return [self.RECORD_CLASS(*row) for row in result]
+
+    def close(self):
+        """Close the DuckDB connection."""
+        if hasattr(self, "con") and self.con:
+            self.con.close()
+            self.con = None
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.close()
+
+    def __del__(self):
+        """Destructor to ensure connection is closed."""
+        self.close()
+
+    def __repr__(self) -> str:
+        """Representation of the ManifestLookup object."""
+        return f"{self.__class__.__name__}('{self.manifest_file_path}')"
+
+
+class GeneManifestLookup(_BaseManifestLookup):
+    """
+    Search and download gene -indexed files from S3 using a parquet manifest
+    """
+
+    INDEX_COLUMNS = ("gene_id",)
+    RECORD_CLASS = GeneRecord
+    DEFAULT_MANIFEST_PATH = GENE_CRE_MANIFEST_FILE_PATH
+
+    def get_record(self, gene_id: str) -> GeneRecord | None:
+        """
+        Get the record for a specific gene_id.
+        This does not download the file (use get_file_path)
+
+        Args:
+            gene_id (str): The gene identifier
+
+        Returns:
+            GeneRecord | None: The record if found, None otherwise
+        """
+        results = self._query({"gene_id": gene_id})
+        return results[0] if results else None
+
+    def get_file_path(self, gene_id: str) -> str | None:
+        """
+        Returns local file_path after downloading from S3 if needed.
+
+        Args:
+            gene_id (str): The gene identifier
+
+        Returns:
+            str | None: Local file path if gene exists, None otherwise
+        """
+        record = self.get_record(gene_id)
+        if not record:
+            return None
+        return self._read_s3_file(record.file_path)
+
+    def exists(self, gene_id: str) -> bool:
+        """
+        Check if a gene_id exists in the data.
+
+        Args:
+            gene_id (str): The gene identifier
+
+        Returns:
+            bool: True if the gene exists, False otherwise
+        """
+        results = self._query({"gene_id": gene_id})
+        return len(results) > 0
+
+    def get_records_for_gene(self, gene_id: str) -> list[GeneRecord]:
+        """
+        Get all records associated with a specific gene ID.
+
+        Args:
+            gene_id (str): The gene identifier
+
+        Returns:
+            list[GeneRecord]: List of records associated with the gene
+        """
+        return self._query({"gene_id": gene_id})
+
+
+class GeneTissueManifestLookup(_BaseManifestLookup):
+    """
+    Search and download tissue and gene -indexed files from S3 using a parquet manifest
+    """
+
+    INDEX_COLUMNS = ("tissue_id", "gene_id")
+    RECORD_CLASS = GeneTissueRecord
+    DEFAULT_MANIFEST_PATH = GENE_TISSUE_MANIFEST_FILE_PATH
+
+    def _normalize_tissue_id(self, tissue_id: str | int) -> int:
+        """
+        Normalize tissue_id to an integer, handling various string formats.
+
+        Args:
+            tissue_id: The tissue identifier (int or str)
+
+        Returns:
+            int: The normalized tissue ID
+        """
+        if isinstance(tissue_id, int):
+            return tissue_id
+
+        # Handle string tissue IDs with prefixes
+        if tissue_id.startswith("model_"):
+            tissue_id = tissue_id.replace("model_", "")
+        if tissue_id.startswith("tissue_"):
+            tissue_id = tissue_id.replace("tissue_", "")
+
+        return int(tissue_id)
+
+    def get_record(self, gene_id: str, tissue_id: str | int) -> GeneTissueRecord | None:
+        """
+        Get the record for a specific gene_id and tissue_id combination.
+        This does not download the file (use get_file_path)
+
+        Args:
+            gene_id (str): The gene identifier
+            tissue_id (str|int): The tissue identifier
+
+        Returns:
+            GeneTissueRecord | None: The record if found, None otherwise
+        """
+        normalized_tissue_id = self._normalize_tissue_id(tissue_id)
+        results = self._query({"gene_id": gene_id, "tissue_id": normalized_tissue_id})
+        return results[0] if results else None
+
+    def get_file_path(self, gene_id: str, tissue_id: str | int) -> str | None:
+        """
+        Returns local file_path after downloading from S3 if needed.
+
+        Args:
+            gene_id (str): The gene identifier
+            tissue_id (str|int): The tissue identifier
+
+        Returns:
+            str | None: Local file path if combination exists, None otherwise
+        """
+        record = self.get_record(gene_id, tissue_id)
+        if not record:
+            return None
+        return self._read_s3_file(record.file_path)
+
+    def exists(self, gene_id: str, tissue_id: str | int) -> bool:
+        """
+        Check if a combination of gene_id and tissue_id exists in the data.
+
+        Args:
+            gene_id (str): The gene identifier
+            tissue_id (str|int): The tissue identifier
+
+        Returns:
+            bool: True if the combination exists, False otherwise
+        """
+        normalized_tissue_id = self._normalize_tissue_id(tissue_id)
+        results = self._query({"gene_id": gene_id, "tissue_id": normalized_tissue_id})
+        return len(results) > 0
+
+    def get_records_for_gene(self, gene_id: str) -> list[GeneTissueRecord]:
+        """
+        Get all records associated with a specific gene ID.
+
+        Args:
+            gene_id (str): The gene identifier
+
+        Returns:
+            list[GeneTissueRecord]: List of records associated with the gene
+        """
+        return self._query({"gene_id": gene_id})
+
+    def get_records_for_tissue(self, tissue_id: str | int) -> list[GeneTissueRecord]:
+        """
+        Get all records associated with a specific tissue ID.
+
+        Args:
+            tissue_id (str|int): The tissue identifier
+
+        Returns:
+            list[GeneTissueRecord]: List of records associated with the tissue
+        """
+        normalized_tissue_id = self._normalize_tissue_id(tissue_id)
+        return self._query({"tissue_id": normalized_tissue_id})

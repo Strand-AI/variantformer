@@ -1,0 +1,44 @@
+V0:
+  checkpoint_path: _artifacts/epoch9_checkpoint.pth
+  emb_dim: 1472
+  gencode: _artifacts/all_genes_v1_pcg_gencodeV24.csv
+  train_config: _artifacts/train.yaml
+V1_AG:
+  checkpoint_path: _artifacts/v1_ag_flash2_epoch5_checkpoint.pth
+  emb_dim: 1792
+  gencode: _artifacts/all_genes_ag_gencodeV24.csv
+  train_config: _artifacts/v1_ag_flash2_train.yaml
+V1_PCG:
+  checkpoint_path: _artifacts/v1_pcg_flash3_epoch14_checkpoint.pth
+  emb_dim: 1536
+  gencode: _artifacts/all_genes_v1_pcg_gencodeV24.csv
+  train_config: _artifacts/v1_pcg_flash3_train.yaml
+V2_PCG:
+  checkpoint_path: _artifacts/v2_pcg_flash2_epoch7_checkpoint.pth
+  emb_dim: 1536
+  gencode: _artifacts/all_genes_v1_pcg_gencodeV24.csv
+  train_config: _artifacts/v2_pcg_flash2_train.yaml
+V4_PCG:
+  checkpoint_path: _artifacts/v4_pcg_epoch11_checkpoint.pth
+  emb_dim: 1536
+  gencode: _artifacts/all_genes_v1_pcg_gencodeV24.csv
+  train_config: _artifacts/v4_pcg_train.yaml
+all_cres: _artifacts/ENCFF234XEZ.bed.gz
+checkpoint_path: _artifacts/v4_ag_epoch9_checkpoint.pth
+chunk_id: 0
+chunks: 1
+context_window: 200
+cre_neighbour_hood: 50
+dataset: alz
+emb_dim: 1536
+experiment_name: seq2gene
+gencode: _artifacts/all_genes_ag_gencodeV24.csv
+gene_downstream_neighbour_hood: 300000
+gene_upstream_neighbour_hood: 1000
+max_length: 200
+output_location: /tmp/vep_output
+precision: bf16-mixed
+train_config: _artifacts/v4_ag_train.yaml
+variants_file: ./tmp.tsv
+vocab: vocabs/bpe_vocabulary_500_using_huggingface.json
+overwrite: true

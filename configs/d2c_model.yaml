@@ -1,0 +1,82 @@
+D2C_PCG:
+  dataset:
+    max_length: 200
+    max_chunks: 200
+    cre_neighbour_hood: 50
+    gencode_v24: _artifacts/all_genes_v1_pcg_gencodeV24.csv
+    gene_upstream_neighbour_hood: 1000
+    gene_downstream_neighbour_hood: 300000
+  model:
+    model_class: Seq2GenePredictorCombinedModulator
+    checkpoint_path: _artifacts/v4_pcg_epoch11_checkpoint.pth
+    flash_attn_3: false
+    cross_alibi: false
+    num_tissues: 63
+    only_cross_attention: false
+    add_context_to_cres: false
+    concat_tissue_context_cres: false
+    concat_tissue_context_genes: false
+    multi_head: false
+    emb_dim: 1536
+    gene_emb_dim: 512
+    num_heads: 32
+    num_layers: 25
+    use_alibi: true
+    mlp_dout: 0.1
+    use_context: true
+    use_batching: true
+    use_res: false
+    gene_pooling: multi_registry
+    token_dim: 512
+    cre_tokenizer_train_mode: val
+    cre_tokenizer_val_mode: val
+    gene_tokenizer_train_mode: val
+    gene_tokenizer_val_mode: val
+    use_bigger_head: true
+    train_gene_tokenizer: true
+    precision: bf16-mixed
+    cre_tokenizer:
+      path: _artifacts/pretrained_tokenizers_checkpoint.pth
+    gene_tokenizer:
+      path: _artifacts/pretrained_tokenizers_checkpoint.pth
+D2C_AG:
+  dataset:
+    max_length: 200
+    max_chunks: 200
+    cre_neighbour_hood: 50
+    gencode_v24: _artifacts/all_genes_ag_gencodeV24.csv
+    gene_upstream_neighbour_hood: 1000
+    gene_downstream_neighbour_hood: 300000
+  model:
+    model_class: Seq2GenePredictorCombinedModulator
+    checkpoint_path: _artifacts/v4_ag_epoch9_checkpoint.pth
+    flash_attn_3: false
+    cross_alibi: false
+    num_tissues: 63
+    only_cross_attention: false
+    add_context_to_cres: false
+    concat_tissue_context_cres: false
+    concat_tissue_context_genes: false
+    multi_head: false
+    emb_dim: 1536
+    gene_emb_dim: 512
+    num_heads: 32
+    num_layers: 25
+    use_alibi: true
+    mlp_dout: 0.1
+    use_context: true
+    use_batching: true
+    use_res: false
+    gene_pooling: multi_registry
+    token_dim: 512
+    cre_tokenizer_train_mode: val
+    cre_tokenizer_val_mode: val
+    gene_tokenizer_train_mode: val
+    gene_tokenizer_val_mode: val
+    use_bigger_head: true
+    train_gene_tokenizer: true
+    precision: bf16-mixed
+    cre_tokenizer:
+      path: _artifacts/pretrained_tokenizers_checkpoint.pth
+    gene_tokenizer:
+      path: _artifacts/pretrained_tokenizers_checkpoint.pth
