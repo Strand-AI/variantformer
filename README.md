@@ -1,5 +1,37 @@
 # VariantFormer
-<img width="1669" height="619" alt="Screenshot 2025-10-24 at 2 58 28 PM" src="https://github.com/user-attachments/assets/88eadb71-8788-4267-b089-f358ddd715cd" />
+![Model Overview](figs/model_overview.png)
+
+
+## Model Description
+
+VariantFormer is a 1.2-billion-parameter hierarchical transformer model that predicts tissue-specific gene expression from personalized diploid genomes. Unlike traditional reference-based models, VariantFormer directly incorporates individual genetic variants to generate tissue-conditioned, person-specific expression predictions across the genome.
+
+## Key Features
+
+- **Personalized genomic modeling:** Encodes individual genetic variants using IUPAC ambiguity codes, enabling native representation of heterozygous and homozygous genotypes
+- **Long-range regulatory context:** Processes megabase-scale cis-regulatory windows to capture enhancer-promoter interactions and distal regulatory elements
+- **Tissue-specific predictions:** Employs hierarchical cross-attention to model regulatory influence in a tissue-conditioned manner across 54 tissues and 7 cell lines
+- **Comprehensive gene coverage:** Excels at predicting both protein-coding genes and non-coding RNAs (lncRNAs, regulatory RNAs), which comprise over 60% of annotated genes
+
+## Training Data
+
+VariantFormer was trained on 21,004 bulk RNA-seq samples from 2,330 donors with paired whole-genome sequencing data, sourced from:
+
+- GTEx (Genotype-Tissue Expression)
+- 1000 Genomes Project
+- ENCODE
+- ADNI (Alzheimer's Disease Neuroimaging Initiative)
+- MAGE
+
+This represents the largest curated collection of paired whole-genome sequencing and bulk RNA-seq data to date.
+
+## Intended Use
+
+- Predict tissue-specific gene expression from individual genomes
+- Score and prioritize genetic variants for gene expression change
+- Generate tissue specific gene embeddings for disease risk prediction
+- Enable variant impact on gene expression across diverse ancestries
+- Facilitate in silico genetic perturbation analysis
 
 
 # Setup
@@ -95,6 +127,8 @@ pip install -e ".[notebook]" --no-build-isolaton
 ##  Available Notebooks
 
 - `notebooks/vcf2exp.ipynb`: VCF to gene expression prediction demo
+- `notebooks/variant2exp.ipynb`: Variant to gene expression prediction demo in context to specific populations (EUR, SAS, EAS, AFR, AMR) or individual.
+- `notebooks/vcf2risk.ipynb`: VCF to Alzheimer's risk prediction demo
 
 
 ## Running Notebooks
