@@ -30,62 +30,68 @@ class AWSCredentials:
 
 
 DEFAULT_DESTINATION = pathlib.Path(__file__).parent.resolve() / "_artifacts"
+DEFAULT_BUCKET="czi-variantformer"
+
 
 ARTIFACTS = [
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/model/v4_ag/all_genes_gencodeV24.csv",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/model/v4_ag/all_genes_gencodeV24.csv",
         local_path="all_genes_ag_gencodeV24.csv",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/model/v4_pcg/all_genes_gencodeV24.csv",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/model/v4_pcg/all_genes_gencodeV24.csv",
         local_path="all_genes_v1_pcg_gencodeV24.csv",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/model/v4_pcg/tokenizer_checkpoint.pth",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/model/v4_pcg/tokenizer_checkpoint.pth",
         local_path="pretrained_tokenizers_checkpoint.pth",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/data/HG00096.vcf.gz",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/data/HG00096.vcf.gz",
         local_path="HG00096.vcf.gz",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/model/v4_ag/checkpoint.pth",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/model/v4_ag/checkpoint.pth",
         local_path="v4_ag_epoch9_checkpoint.pth",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/model/v4_pcg/checkpoint.pth",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/model/v4_pcg/checkpoint.pth",
         local_path="v4_pcg_epoch11_checkpoint.pth",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/model/common/ENCFF234XEZ.bed.gz",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/model/common/ENCFF234XEZ.bed.gz",
         local_path="ENCFF234XEZ.bed.gz",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/data/GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.gz",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/data/GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.gz",
         local_path="GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.gz",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/gold_data/f9bbc0ba.pq",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/gold_data/f9bbc0ba.pq",
         local_path="f9bbc0ba.pq",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/gold_data/924979a7.pq",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/gold_data/924979a7.pq",
         local_path="924979a7.pq",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/gold_data/befd2388.npz",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/gold_data/befd2388.npz",
         local_path="befd2388.npz",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/gold_data/be73e19a.pq",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/gold_data/be73e19a.pq",
         local_path="be73e19a.pq",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/model/common/reference_genomes/",
-        local_path="reference_genomes",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/model/common/reference_genomes/data_split/hg38/cres/data_split/hg38_chr19.pkl.gz",
+        local_path="reference_genomes/data_split/hg38/cres/data_split/hg38_chr19.pkl.gz",
     ),
     Artifact(
-        remote_uri="s3://czi-dnacell-staging/data/1KG_af_hg38_tables/",
+        remote_uri=f"s3://{DEFAULT_BUCKET}/model/common/reference_genomes/data/hg38/genes/data/ENSG00000130203.9_hg38.npz",
+        local_path="reference_genomes/data/hg38/genes/data/ENSG00000130203.9_hg38.npz",
+    ),
+    Artifact(
+        remote_uri=f"s3://{DEFAULT_BUCKET}/data/1KG_af_hg38_tables/",
         local_path="1KG_af_hg38_tables",
     ),
 ]

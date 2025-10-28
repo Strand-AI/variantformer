@@ -14,12 +14,14 @@ import duckdb
 
 
 logger = logging.getLogger(__name__)
+DEFAULT_BUCKET="czi-variantformer"
+
 
 GENE_TISSUE_MANIFEST_FILE_PATH = (
-    "s3://czi-dnacell-staging/alzhimers_disease/v1/manifest.parquet"
+    f"s3://{DEFAULT_BUCKET}/alzheimer_disease/v4_pcg/manifest.parquet"
 )
 GENE_CRE_MANIFEST_FILE_PATH = (
-    "s3://czi-dnacell-staging/model/common/cres_all_genes_manifest.parquet"
+    f"s3://{DEFAULT_BUCKET}/model/common/cres_all_genes_manifest.parquet"
 )
 
 

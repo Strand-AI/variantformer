@@ -1,5 +1,5 @@
 #!/usr/bin/env -S bash -eu
-#
+
 # This script should install everything needed for VariantFormer to run the example notebooks.
 # It may need to be run using `sudo` on your system.
 # It's intended to run on Ubuntu (tested on 24.04) with CUDA drivers already installed.
@@ -7,7 +7,7 @@
 # If you don't want to install all these packages, the separate Dockerfile can be used to
 # create a self-contained image for running VariantFormer.
 
-apt-get update && apt-get install -y \
+sudo apt-get update && sudo apt-get install -y \
     bedtools \
     zlib1g \
     zlib1g-dev \
@@ -25,7 +25,7 @@ wget -O htslib-1.21.tar.bz2 https://github.com/samtools/htslib/releases/download
 tar -xjf htslib-1.21.tar.bz2
 cd htslib-1.21
 make
-make install
+sudo make install
 cd ..
 rm -rf htslib-1.21 htslib-1.21.tar.bz2
 
@@ -34,7 +34,7 @@ wget -O samtools-1.21.tar.bz2 https://github.com/samtools/samtools/releases/down
 tar -xjf samtools-1.21.tar.bz2
 cd samtools-1.21
 make
-make install
+sudo make install
 cd ..
 rm -rf samtools-1.21 samtools-1.21.tar.bz2
 
@@ -43,7 +43,7 @@ wget -O bcftools-1.21.tar.bz2 https://github.com/samtools/bcftools/releases/down
 tar -xjf bcftools-1.21.tar.bz2
 cd bcftools-1.21
 make
-make install
+sudo make install
 cd ..
 rm -rf bcftools-1.21 bcftools-1.21.tar.bz2
 
@@ -55,4 +55,5 @@ uv venv $UV_PROJECT_ENVIRONMENT --python=3.12
 
 source $UV_PROJECT_ENVIRONMENT/bin/activate
 
-uv pip install -e .[notebook,test]
+uv pip install -vvv torch psutil
+uv pip install -vvv -e .[notebook,test] --no-build-isolation

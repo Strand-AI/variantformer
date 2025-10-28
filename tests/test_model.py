@@ -179,7 +179,8 @@ class TestADrisk(unittest.TestCase):
         gene_tissue_embeds = preds_df["embeddings"].iloc[0]
         # gene_tissue_embeds = np.vstack([gene_tissue_embeds, gene_tissue_embeds])
         preds = self.adrisk(gene_tissue_embeds)
-        self.assertAlmostEqual(preds[0], 0.31081957, places=5)  # <- Needs to be checked
+        # self.assertAlmostEqual(preds[0], 0.31081957, places=5)  # <- Needs to be checked
+        self.assertAlmostEqual(preds[0], 0.29021648, places=5)  # V4 pcg on h100 coreweave
         print(f"AD risk proba prediction is: {preds}")
 
 

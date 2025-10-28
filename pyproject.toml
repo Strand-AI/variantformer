@@ -10,6 +10,11 @@ authors = [
 ]
 
 dependencies = [
+    # Install PyTorch first
+    "torch~=2.7.0",
+    "torchaudio~=2.7.0",
+    "torchvision~=0.22.0",
+    # Then other dependencies
     "boto3~=1.40.49",
     "duckdb~=1.4.1",
     "einops~=0.8.1",
@@ -31,10 +36,7 @@ dependencies = [
     "scikit-learn~=1.5.2",
     "scipy~=1.15.3",
     "tokenizers~=0.21.1",
-    "torch~=2.7.0",
-    "torchaudio~=2.7.0",
     "torchmetrics~=1.7.1",
-    "torchvision~=0.22.0",
     "tqdm~=4.67.1",
     "treelite>=4.4.1",
 ]
@@ -47,8 +49,16 @@ test = [
     "pytest>=8.4.2",
 ]
 
-[tool.uv]
-no-build-isolation-package = ["flash-attn"]
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.uv.extra-build-dependencies]
-flash-attn = ["setuptools>=80.9.0", "torch>=2.7,<2.8"]
+[tool.setuptools.packages.find]
+include = ["datasets*", "processors*", "seq2gene*", "seq2reg*", "utils*", "vep*"]
+exclude = ["tests*", "figs*", "notebooks*", "configs*", "vocabs*"]
+
+# [tool.uv]
+# no-build-isolation-package = ["flash-attn"]
+
+# [tool.uv.extra-build-dependencies]
+# flash-attn = ["setuptools>=80.9.0", "torch>=2.7,<2.8"]
