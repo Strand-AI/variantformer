@@ -7,7 +7,7 @@ import tempfile
 import shutil
 
 
-_REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
+_REPO_ROOT = Path(__file__).parent.parent.resolve()
 VCF_EXAMPLE = _REPO_ROOT / "_artifacts" / "HG00096.vcf.gz"
 
 
