@@ -5,6 +5,7 @@ from pathlib import Path
 from processors.variantprocessor import VariantProcessor
 import tempfile
 import shutil
+import stash as st
 
 
 _REPO_ROOT = Path(__file__).parent.parent.resolve()
@@ -152,6 +153,44 @@ class Test(unittest.TestCase):
         print(f"Predictions shape: {predictions_df.shape}")
         print(f"Sample predictions:\n{predictions_df.head()}")
 
+class TestVariantProcessor(unittest.TestCase):
+    def setUp(self) -> None:
+        # Load target predictions for regression testing
+        model_class = "D2C_PCG"
+        # model_class = "D2C_AG"
+        self.processor = VariantProcessor(model_class=model_class)
+        print("Model class: ", model_class)
+        self.test_df = st.get('a0063c48')
+        self.test_df['chr'] = self.test_df['variant_id'].apply(lambda x: x.split('_')[0])
+        self.test_df['pos'] = self.test_df['variant_id'].apply(lambda x: int(x.split('_')[1]))
+        self.test_df = self.test_df.iloc[0:1]
+        self.temp_dir = tempfile.mkdtemp()
 
+    def tearDown(self) -> None:
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+
+    def test_1(self) -> None:
+        print("checkpoint 1")
+        # Get raw predictions for comparison with target predictions
+        raw_predictions = self.processor.predict(var_df=self.test_df, output_dir=self.temp_dir)
+
+        print("checkpoint 2")
+        # Compile predictions to DataFrame and validate format
+        predictions_df = self.processor.format_scores(raw_predictions)
+
+        final_results = self.processor.eqtl_scores(predictions_df)
+
+        # Clean up resources
+        self.processor.cleanup()
+
+        print("checkpoint 3")
+        # Basic assertions to verify the DataFrame format
+        self.assertIsInstance(predictions_df, pd.DataFrame)
+        self.assertGreater(len(predictions_df), 0)
+
+        print(f"✅ Format test passed! Generated {len(predictions_df)} prediction rows")
+        print(f"Sample predictions:\n{final_results.head()}")
+        print(f"Test: {self.test_df.head()}")
 if __name__ == "__main__":
     unittest.main()
