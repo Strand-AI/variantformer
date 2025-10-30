@@ -26,11 +26,30 @@ GENE_CRE_MANIFEST_FILE_PATH = (
     f"s3://{DEFAULT_BUCKET}/model/common/cres_all_genes_manifest.parquet"
 )
 
+GENE_SEQUENCES_MANIFEST_FILE_PATH = (
+    f"s3://{DEFAULT_BUCKET}/model/common/reference_genomes/genes_seqs_manifest.parquet"
+)
+
+CRE_SEQUENCES_MANIFEST_FILE_PATH = (
+    f"s3://{DEFAULT_BUCKET}/model/common/reference_genomes/cres_seqs_manifest.parquet"
+)
 
 @dataclasses.dataclass
 class GeneRecord:
     gene_id: str
     file_path: str
+
+@dataclasses.dataclass
+class GeneSequenceRecord:
+    gene_id: str
+    file_path: str
+    population: str
+
+@dataclasses.dataclass
+class CreSequenceRecord:
+    chromosome: str
+    file_path: str
+    population: str
 
 
 @dataclasses.dataclass
@@ -305,6 +324,115 @@ class GeneManifestLookup(_BaseManifestLookup):
             list[GeneRecord]: List of records associated with the gene
         """
         return self._query({"gene_id": gene_id})
+
+
+class GeneSequencesManifestLookup(_BaseManifestLookup):
+    """
+    Search and download gene/cre sequences -indexed files from S3 using a parquet manifest
+    """
+
+    INDEX_COLUMNS = ("gene_id", "population")
+    RECORD_CLASS = GeneSequenceRecord
+    DEFAULT_MANIFEST_PATH = GENE_SEQUENCES_MANIFEST_FILE_PATH
+
+    def get_record(self, gene_id: str, population: str) -> GeneSequenceRecord | None:
+        """
+        Get the record for a specific gene_id and population combination.
+        This does not download the file (use get_file_path)
+
+        Args:
+            gene_id (str): The gene identifier
+            population (str): The population identifier
+
+        Returns:
+            GeneSequenceRecord | None: The record if found, None otherwise
+        """
+        results = self._query({"gene_id": gene_id, "population": population})
+        return results[0] if results else None
+
+    def get_file_path(self, gene_id: str, population: str) -> str | None:
+        """
+        Returns local file_path after downloading from S3 if needed.
+
+        Args:
+            gene_id (str): The gene identifier
+            population (str): The population identifier
+
+        Returns:
+            str | None: Local file path if gene exists, None otherwise
+        """
+        record = self.get_record(gene_id, population)
+        if not record:
+            return None
+        return self._read_s3_file(record.file_path)
+
+    def exists(self, gene_id: str, population: str) -> bool:
+        """
+        Check if a gene_id exists in the data.
+
+        Args:
+            gene_id (str): The gene identifier
+            population (str): The population identifier
+
+        Returns:
+            bool: True if the gene exists, False otherwise
+        """
+        results = self._query({"gene_id": gene_id, "population": population})
+        return len(results) > 0
+
+class CreSequencesManifestLookup(_BaseManifestLookup):
+    """
+    Search and download gene/cre sequences -indexed files from S3 using a parquet manifest
+    """
+
+    INDEX_COLUMNS = ("gene_id", "population")
+    RECORD_CLASS = CreSequenceRecord
+    DEFAULT_MANIFEST_PATH = CRE_SEQUENCES_MANIFEST_FILE_PATH
+
+    def get_record(self, chromosome: str, population: str) -> CreSequenceRecord | None:
+        """
+        Get the record for a specific chromosome and population combination.
+        This does not download the file (use get_file_path)
+
+        Args:
+            chromosome (str): The chromosome identifier
+            population (str): The population identifier
+
+        Returns:
+            CreSequenceRecord | None: The record if found, None otherwise
+        """
+        results = self._query({"chrom": chromosome, "population": population})
+        return results[0] if results else None
+
+    def get_file_path(self, chromosome: str, population: str) -> str | None:
+        """
+        Returns local file_path after downloading from S3 if needed.
+
+        Args:
+            chromosome (str): The chromosome identifier
+            population (str): The population identifier
+
+        Returns:
+            str | None: Local file path if chromosome exists, None otherwise
+        """
+        record = self.get_record(chromosome, population)
+        if not record:
+            return None
+        return self._read_s3_file(record.file_path)
+
+    def exists(self, chromosome: str, population: str) -> bool:
+        """
+        Check if a chromosome exists in the data.
+
+        Args:
+            chromosome (str): The chromosome identifier
+            population (str): The population identifier
+
+        Returns:
+            bool: True if the chromosome exists, False otherwise
+        """
+        results = self._query({"chrom": chromosome, "population": population})
+        return len(results) > 0
 
 
 class GeneTissueManifestLookup(_BaseManifestLookup):

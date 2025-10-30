@@ -176,11 +176,13 @@ class VEPDataset:
                 - gene_cres_df: CRE dataframe
                 - gene_id: Gene ID
         """
+        import ipdb; ipdb.set_trace()
         gene_cre_map_path = self.gene_cre_manifest.get_file_path(gene_id)
         gene_df = pd.read_csv(gene_cre_map_path)
         # columns: chromosome	start	end	gene_id	gene_name	strand	start_cre	end_cre	cre_id	score	strand_cre	att1	att2	cre_color	cre_name	embedding	start_gene	end_gene
         gene_df["start_cre"] = gene_df["start_cre"] - self.cre_neighbour_hood
         gene_df["end_cre"] = gene_df["end_cre"] + self.cre_neighbour_hood
+        import ipdb; ipdb.set_trace()
         df = pd.read_pickle(cre_file)
         df = df.rename(columns={"start": "start_cre", "end": "end_cre"})
 
@@ -249,6 +251,7 @@ class VEPDataset:
     ) -> Tuple[pd.DataFrame, Dict]:
         """Load gene CRE and sequence data"""
         # Load gene CREs
+        import ipdb; ipdb.set_trace()
         cre_df, gene_id = self._map_files(
             f"{ref_cres_path}/{sample_name}_{chromosome}.pkl.gz", gene["gene_id"]
         )
@@ -645,6 +648,7 @@ class VEPDataset:
         tissue: List[int],
         vcf_path: str = None,
     ) -> Dict[str, Any]:
+
         """Process a variant-gene pair and return all three conditions (ref, het, hom)"""
         try:
             # Load gene data
@@ -770,6 +774,7 @@ class VEPDataset:
             self.gene_variant_pairs[idx]["population"],
             self.gene_variant_pairs[idx]["vcf_path"],
         )
+        import ipdb; ipdb.set_trace()
         prebatch = self.process_variant_gene_pair(
             variant,
             gene,
