@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from lightning.pytorch import Trainer
 from utils.functions import generate_log2fc_score
-from utils.assets import GeneManifestLookup
+from utils.assets import GeneManifestLookup, GeneSequencesManifestLookup, CreSequencesManifestLookup
 
 
 class VariantProcessor:
@@ -29,6 +29,8 @@ class VariantProcessor:
         vep_loader_config = OmegaConf.load(base_dir / "configs" / "veploader.yaml")
 
         self.gene_cre_manifest = GeneManifestLookup()
+        self.gene_seq_manifest = GeneSequencesManifestLookup()
+        self.cre_seq_manifest = CreSequencesManifestLookup()
 
         # Resolve all paths relative to project root
         if not os.path.isabs(vep_loader_config.CRE_BED):
@@ -198,6 +200,8 @@ class VariantProcessor:
         vep_dataset = VEPDataset(
             bpe_encoder=bpe,
             gene_cre_manifest=self.gene_cre_manifest,
+            gene_seq_manifest=self.gene_seq_manifest,
+            cre_seq_manifest=self.cre_seq_manifest,
             max_length=self.config.max_length,
             context_window=self.config.context_window,
             cre_neighbour_hood=self.config.cre_neighbour_hood,

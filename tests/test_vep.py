@@ -15,7 +15,8 @@ class Test(unittest.TestCase):
     def setUp(self) -> None:
         # Load target predictions for regression testing
         self.target_predictions = np.load(_REPO_ROOT / "_artifacts" / "befd2388.npz")
-        model_class = "D2C_AG"
+        model_class = "D2C_PCG"
+        # model_class = "D2C_AG"
         self.processor = VariantProcessor(model_class=model_class)
         print("Model class: ", model_class)
         # Create test data similar to the notebook

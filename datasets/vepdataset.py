@@ -8,7 +8,7 @@ from utils.constants import MAP_REF_CRE_TO_IDX, SPECIAL_TOKENS
 import copy
 from utils.data_process import ExtractSeqFromBed
 from utils.functions import multi_try_load_csv
-from utils.assets import GeneManifestLookup
+from utils.assets import GeneManifestLookup, GeneSequencesManifestLookup, CreSequencesManifestLookup
 
 
 @dataclass
@@ -138,6 +138,8 @@ class VEPDataset:
         self,
         bpe_encoder: BPEEncoder,
         gene_cre_manifest: GeneManifestLookup,
+        gene_seq_manifest: GeneSequencesManifestLookup,
+        cre_seq_manifest: CreSequencesManifestLookup,
         *,
         max_length: int = 200,
         context_window: int = 200,
@@ -156,6 +158,8 @@ class VEPDataset:
         self.pad_token_id = self.vocab.get(SPECIAL_TOKENS["pad_token"])
         self.sequence_processor = SequenceProcessor()
         self.gene_cre_manifest = gene_cre_manifest
+        self.gene_seq_manifest = gene_seq_manifest
+        self.cre_seq_manifest = cre_seq_manifest
         self.cre_neighbour_hood = cre_neighbour_hood
         self.gene_upstream_neighbour_hood = gene_upstream_neighbour_hood
         self.gene_downstream_neighbour_hood = gene_downstream_neighbour_hood
@@ -176,13 +180,11 @@ class VEPDataset:
                 - gene_cres_df: CRE dataframe
                 - gene_id: Gene ID
         """
-        import ipdb; ipdb.set_trace()
         gene_cre_map_path = self.gene_cre_manifest.get_file_path(gene_id)
         gene_df = pd.read_csv(gene_cre_map_path)
         # columns: chromosome	start	end	gene_id	gene_name	strand	start_cre	end_cre	cre_id	score	strand_cre	att1	att2	cre_color	cre_name	embedding	start_gene	end_gene
         gene_df["start_cre"] = gene_df["start_cre"] - self.cre_neighbour_hood
         gene_df["end_cre"] = gene_df["end_cre"] + self.cre_neighbour_hood
-        import ipdb; ipdb.set_trace()
         df = pd.read_pickle(cre_file)
         df = df.rename(columns={"start": "start_cre", "end": "end_cre"})
 
@@ -237,29 +239,25 @@ class VEPDataset:
         if len(to_drop) > 0:
             gene_cres_df = gene_cres_df.drop(index=to_drop)
         gene_cres_df = gene_cres_df.reset_index(drop=True)
-        gene_id = gene_df["gene_id"].iloc[0]
 
-        return gene_cres_df, gene_id
+        return gene_cres_df
 
     def load_gene_data(
         self,
         gene: Dict[str, Any],
-        ref_cres_path: str,
-        ref_gene_path: str,
         chromosome: str,
         sample_name: str,
+        population: str,
     ) -> Tuple[pd.DataFrame, Dict]:
         """Load gene CRE and sequence data"""
-        # Load gene CREs
-        import ipdb; ipdb.set_trace()
-        cre_df, gene_id = self._map_files(
-            f"{ref_cres_path}/{sample_name}_{chromosome}.pkl.gz", gene["gene_id"]
-        )
+        # Load cre sequence data
+        cre_seq_path = self.cre_seq_manifest.get_file_path(chromosome, population)
+        cre_df = self._map_files(cre_seq_path, gene["gene_id"])
 
         # Load gene sequence data
-        gene_data = np.load(
-            f"{ref_gene_path}/{gene_id}_{sample_name}.npz", allow_pickle=True
-        )
+        gene_seq_path = self.gene_seq_manifest.get_file_path(gene['gene_id'], population)
+        gene_data = np.load(gene_seq_path, allow_pickle=True)
+
         gene_dict = {key: str(gene_data[key]) for key in gene_data.files}
         strand = gene["strand"]
         start = gene["start"]
@@ -642,8 +640,7 @@ class VEPDataset:
         self,
         variant: Variant,
         gene: Dict[str, Any],
-        ref_cres_path: str,
-        ref_gene_path: str,
+        population: str,
         sample_name: str,
         tissue: List[int],
         vcf_path: str = None,
@@ -659,10 +656,9 @@ class VEPDataset:
             else:
                 cre_df, gene_dict = self.load_gene_data(
                     gene,
-                    ref_cres_path,
-                    ref_gene_path,
                     chromosome=variant.chrom,
                     sample_name=sample_name,
+                    population=population,
                 )
 
             # Apply variant
@@ -774,16 +770,10 @@ class VEPDataset:
             self.gene_variant_pairs[idx]["population"],
             self.gene_variant_pairs[idx]["vcf_path"],
         )
-        import ipdb; ipdb.set_trace()
         prebatch = self.process_variant_gene_pair(
             variant,
             gene,
-            ref_cres_path=self.data_vocab[population].cre_location
-            if vcf_path is None
-            else None,
-            ref_gene_path=self.data_vocab[population].gene_location
-            if vcf_path is None
-            else None,
+            population,
             sample_name=sample_name,
             tissue=variant.tissue,
             vcf_path=vcf_path,
