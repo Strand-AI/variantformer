@@ -29,6 +29,7 @@ class AWSCredentials:
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     aws_session_token: str | None = None
+    aws_use_environment_credentials: bool = False
 
 
 DEFAULT_DESTINATION = pathlib.Path(__file__).parent.resolve() / "_artifacts"
@@ -213,33 +214,6 @@ def _validate():
         )
 
 
-def get_s3_client(credentials: AWSCredentials | None = None, is_bucket_public: bool = False):
-    if is_bucket_public:
-        client = boto3.client("s3", config=Config(signature_version=UNSIGNED))
-        return client
-        
-    credentials = (
-        credentials or AWSCredentials()
-    )  # simplifies the logic if this is not None
-
-    if credentials.profile:
-        # use that profile
-        session = boto3.Session(profile_name=credentials.profile)
-        client = session.client("s3")
-    else:
-        # try to use what credentials they provided
-        # if they're all none, boto will use its standard way to get them from the environment
-        client_kwargs = {}
-        if credentials.aws_access_key_id:
-            client_kwargs["aws_access_key_id"] = credentials.aws_access_key_id
-        if credentials.aws_secret_access_key:
-            client_kwargs["aws_secret_access_key"] = credentials.aws_secret_access_key
-        if credentials.aws_session_token:
-            client_kwargs["aws_session_token"] = credentials.aws_session_token
-        client = boto3.client("s3", **client_kwargs)
-    return client
-
-
 def main(
     destination: pathlib.Path = DEFAULT_DESTINATION,
     credentials: AWSCredentials | None = None,
@@ -251,7 +225,30 @@ def main(
         print(e, file=sys.stderr)
         sys.exit(1)
 
-    client = get_s3_client(credentials, is_bucket_public=True)
+    credentials = (
+        credentials or AWSCredentials()
+    )  # simplifies the logic if this is not None
+
+    if credentials.profile:
+        # use that profile
+        session = boto3.Session(profile_name=credentials.profile)
+        client = session.client("s3")
+    else:
+        # try to use what credentials they provided
+        client_kwargs = {}
+        if credentials.aws_access_key_id:
+            client_kwargs["aws_access_key_id"] = credentials.aws_access_key_id
+        if credentials.aws_secret_access_key:
+            client_kwargs["aws_secret_access_key"] = credentials.aws_secret_access_key
+        if credentials.aws_session_token:
+            client_kwargs["aws_session_token"] = credentials.aws_session_token
+
+        # if no credentials provided and not letting boto3 pull them from the environment, use unsigned requests
+        if (not credentials.aws_use_environment_credentials) and not any([credentials.aws_access_key_id, credentials.aws_secret_access_key, credentials.aws_session_token]):
+            client_kwargs["config"] = Config(signature_version=UNSIGNED)
+
+        client = boto3.client("s3", **client_kwargs)
+
     errors = download(client, destination)
 
     if errors:
@@ -263,7 +260,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Download artifacts from S3 to local filesystem"
+        description="Download artifacts from S3 to local filesystem. Optionally takes AWS credentials for non-public bucket."
     )
     parser.add_argument(
         "--destination",
@@ -282,6 +279,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--aws-session-token",
         help="AWS session token (optional, if no profile specified)",
+    )
+    parser.add_argument(
+        "--aws-use-environment-credentials",
+        action="store_true",
+        help="Use AWS credentials from environment/config files instead of unsigned requests",
     )
 
     args = parser.parse_args()
@@ -304,6 +306,7 @@ if __name__ == "__main__":
         aws_access_key_id=args.aws_access_key_id,
         aws_secret_access_key=args.aws_secret_access_key,
         aws_session_token=args.aws_session_token,
+        aws_use_environment_credentials=args.aws_use_environment_credentials,
     )
 
     main(destination=args.destination, credentials=credentials)

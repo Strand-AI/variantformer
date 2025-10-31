@@ -158,6 +158,7 @@ class VariantProcessor:
                 mapped += 1
             for gene in probable_genes:
                 if vcf_path is not None and sample_name is not None:
+              
                     self.gene_variant_pairs.append(
                         {
                             "variant": variant,
@@ -167,6 +168,7 @@ class VariantProcessor:
                             "vcf_path": vcf_path,
                         }
                     )
+
                     self.gene_variant_pairs.append(
                         {
                             "variant": variant,
@@ -217,8 +219,8 @@ class VariantProcessor:
             batch_size=1,
             shuffle=False,
             num_workers=self.vep_loader_config.dataloader.num_workers,
-            # prefetch_factor=self.vep_loader_config.dataloader.prefetch_factor,
-            # pin_memory=self.vep_loader_config.dataloader.pin_memory,
+            prefetch_factor=self.vep_loader_config.dataloader.prefetch_factor,
+            pin_memory=self.vep_loader_config.dataloader.pin_memory,
             collate_fn=collate_fn,
         )
 
