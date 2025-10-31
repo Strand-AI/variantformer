@@ -18,8 +18,8 @@ from utils.assets import GeneManifestLookup, GeneSequencesManifestLookup, CreSeq
 class VariantProcessor:
     """Main class for processing variants and predicting pathogenicity"""
 
-    # TODO: needs a major refactor: building paths like this is brittle, we may need a master artefact manifest
-    # and a just in time artefact fetcher from s3/local filesystem that abstracts path building like below
+    # TODO: needs a major refactor: building paths like this is brittle, we may need a master artifact manifest
+    # and a just in time artifact fetcher from s3/local filesystem that abstracts path building like below
     def __init__(self, model_class: str = "D2C_PCG"):
         # Load configurations
         base_dir = Path(__file__).parent.parent.resolve()
