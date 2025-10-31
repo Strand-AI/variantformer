@@ -6,6 +6,11 @@ from processors.variantprocessor import VariantProcessor
 import tempfile
 import shutil
 import stash as st
+import subprocess
+import tempfile
+
+from processors.vcfprocessor import VCFProcessor
+from processors.variantprocessor import VariantProcessor
 
 
 _REPO_ROOT = Path(__file__).parent.parent.resolve()
@@ -315,6 +320,78 @@ class TestVariantProcessor(unittest.TestCase):
         self.assertIsInstance(predictions_df, pd.DataFrame)
         self.assertGreater(len(predictions_df), 0)
 
+class TestVariantProcessorAnVcfProcessor(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # bcftools expects an index so create one
+        index_file = VCF_EXAMPLE.with_suffix(VCF_EXAMPLE.suffix + ".tbi")
+        if not index_file.exists():
+            subprocess.run(["bcftools", "index", "-t", str(VCF_EXAMPLE)], check=True)
+
+    def setUp(self) -> None:
+        """
+        Set up the test case with a sample VariantProcessor and VCFProcessor instance and test data.
+        """
+        self.vcf_df = pd.read_parquet(_REPO_ROOT / "_artifacts" / "f9bbc0ba.pq")
+        model_class = "D2C_AG"
+        self.variant_processor = VariantProcessor(model_class=model_class)
+        self.vcf_processor = VCFProcessor(model_class=model_class)
+
+    def test_1(self) -> None:
+        """
+        Test the VariantProcessor and VCFProcessor prediction pipeline with sample data.
+        """
+        vcf_path = str(VCF_EXAMPLE)
+        variant_df = {
+            "chrom": ["chr19"],
+            "pos": [44908684],
+            "ref": ["T"],
+            "alt": ["T"],
+            "tissue": ["whole blood"],
+            "gene_id": ["ENSG00000130203.9"],
+        }
+        variant_df = pd.DataFrame(variant_df)
+        variant_df["tissues"] = variant_df["tissue"]
+        vcf_dataset, dataloader = self.vcf_processor.create_data(vcf_path, variant_df)
+        model, checkpoint_path, trainer = self.vcf_processor.load_model()
+        predictions_df = self.vcf_processor.predict(
+            model, checkpoint_path, trainer, dataloader, vcf_dataset
+        )
+        print("VCF-based predictions:")
+        print(predictions_df.head(2))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            variant_vcf_df = self.variant_processor.predict(
+                variant_df,
+                output_dir=temp_dir,
+                vcf_path=vcf_path,
+                sample_name=self.vcf_df["name"].iloc[0],
+            )
+
+        variant_based_df = variant_vcf_df[
+            (variant_vcf_df["sample_name"] == self.vcf_df["name"].iloc[0])
+            & (variant_vcf_df["zygosity"] == "0")
+        ].reset_index(drop=True)
+        print("Variant-based predictions:")
+        print(variant_based_df.head(2))
+
+        self.assertTrue(
+            np.allclose(
+                variant_based_df["gene_exp"].values[0],
+                predictions_df["predicted_expression"].iloc[0][0],
+                atol=0.1,
+            ),
+            f"Variant-based predictions: {variant_based_df['gene_exp']} do not match VCF-based predictions: {predictions_df['predicted_expression'].iloc[0]}",
+        )
+
+        self.assertTrue(
+            np.allclose(
+                variant_based_df["gene_emb"].values[0],
+                predictions_df["embeddings"].iloc[0][0],
+                atol=1,
+            ),
+            f"Variant-based predictions: {variant_based_df['gene_emb']} do not match VCF-based predictions: {predictions_df['embeddings'].iloc[0]}",
+        )
 
    
 if __name__ == "__main__":
