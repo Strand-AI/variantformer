@@ -337,17 +337,7 @@ class GeneSequencesManifestLookup(_BaseManifestLookup):
 
     INDEX_COLUMNS = ("gene_id", "population")
     RECORD_CLASS = GeneSequenceRecord
-    # DEFAULT_MANIFEST_PATH = GENE_SEQUENCES_MANIFEST_FILE_PATH
-    ##################### the lines below can be removed when the assets are on s3
-    logger.warning("Using hardcoded manifest path for GeneSequencesManifestLookup")
-    DEFAULT_MANIFEST_PATH = "/mnt/czi-sci-ai/intrinsic-variation-gene-ex/youssef/src/variantformer/_artifacts/genes_seqs_manifest.parquet"
-    
-    def __init__(self, manifest_file_path=None, tmp_dir=None, aws_credentials=None):
-        logger.warning("Using hardcoded manifest path for GeneSequencesManifestLookup")
-        super().__init__(manifest_file_path, tmp_dir, aws_credentials)
-        # Override the bucket property from base class
-        self.bucket = DEFAULT_BUCKET
-    #####################
+    DEFAULT_MANIFEST_PATH = GENE_SEQUENCES_MANIFEST_FILE_PATH
 
     def get_record(self, gene_id: str, population: str) -> GeneSequenceRecord | None:
         """
@@ -401,17 +391,7 @@ class CreSequencesManifestLookup(_BaseManifestLookup):
 
     INDEX_COLUMNS = ("chromosome", "population")
     RECORD_CLASS = CreSequenceRecord
-    #DEFAULT_MANIFEST_PATH = CRE_SEQUENCES_MANIFEST_FILE_PATH
-    ##################### the lines below can be removed when the assets are on s3
-    logger.warning("Using hardcoded manifest path for CreSequencesManifestLookup")
-    DEFAULT_MANIFEST_PATH = "/mnt/czi-sci-ai/intrinsic-variation-gene-ex/youssef/src/variantformer/_artifacts/cres_seqs_manifest.parquet"
-    
-    def __init__(self, manifest_file_path=None, tmp_dir=None, aws_credentials=None):
-        logger.warning("Using hardcoded manifest path for CreSequencesManifestLookup")
-        super().__init__(manifest_file_path, tmp_dir, aws_credentials)
-        # Override the bucket property from base class
-        self.bucket = DEFAULT_BUCKET
-    #####################
+    DEFAULT_MANIFEST_PATH = CRE_SEQUENCES_MANIFEST_FILE_PATH
 
     def get_record(self, chromosome: str, population: str) -> CreSequenceRecord | None:
         """

@@ -2,6 +2,14 @@ import unittest
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import logging
+logging.basicConfig(
+   level=logging.DEBUG,
+   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+   datefmt='%Y-%m-%d %H:%M:%S'
+   )
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 from processors.vcfprocessor import VCFProcessor
 
@@ -43,8 +51,8 @@ class TestGeneExpressionAndEmbedding(unittest.TestCase):
         preds_df.tissues = preds_df.tissues.apply(lambda x: np.array(x))
         preds_df.tissue_names = preds_df.tissue_names.apply(lambda x: np.array(x))
         # pd.testing.assert_frame_equal(preds_df, self.target_df) <- Can be uncommented when target df is updated
-        print("Gene expression and embedding predictions:")
-        print(preds_df.head(2))
+        log.info("Gene expression and embedding predictions:")
+        log.info(f"{preds_df.head(2)}")
 
 
 if __name__ == "__main__":
