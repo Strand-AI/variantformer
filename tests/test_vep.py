@@ -206,8 +206,8 @@ class TestVariantProcessor(unittest.TestCase):
 
         final_results = self.processor_ag.eqtl_scores(predictions_df)
 
-        sas_score_pred = final_results['D2C-SAS-2-exp-log2fc'].values
-        sas_score_target = self.test_df['D2C-SAS-2-log2fc_ag'].values
+        sas_score_pred = final_results['VF-SAS-2-exp-log2fc'].values
+        sas_score_target = self.test_df['VF-SAS-2-log2fc_ag'].values
 
         self.assertTrue(
             np.allclose(sas_score_pred, sas_score_target, atol=1e-3),
@@ -215,40 +215,40 @@ class TestVariantProcessor(unittest.TestCase):
         )
 
         log.info("checkpoint 2.2")
-        eur_score_pred = final_results['D2C-EUR-2-exp-log2fc'].values
-        eur_score_target = self.test_df['D2C-EUR-2-log2fc_ag'].values
+        eur_score_pred = final_results['VF-EUR-2-exp-log2fc'].values
+        eur_score_target = self.test_df['VF-EUR-2-log2fc_ag'].values
 
         self.assertTrue(
             np.allclose(eur_score_pred, eur_score_target, atol=1e-3),
             f"EUR score predictions: {eur_score_pred} do not match target scores: {eur_score_target}",
         )
         log.info("checkpoint 2.3")
-        afr_score_pred = final_results['D2C-AFR-2-exp-log2fc'].values
-        afr_score_target = self.test_df['D2C-AFR-2-log2fc_ag'].values
+        afr_score_pred = final_results['VF-AFR-2-exp-log2fc'].values
+        afr_score_target = self.test_df['VF-AFR-2-log2fc_ag'].values
         self.assertTrue(
             np.allclose(afr_score_pred, afr_score_target, atol=1e-3),
             f"AFR score predictions: {afr_score_pred} do not match target scores: {afr_score_target}",
         )
 
         log.info("checkpoint 2.4")
-        amr_score_pred = final_results['D2C-AMR-2-exp-log2fc'].values
-        amr_score_target = self.test_df['D2C-AMR-2-log2fc_ag'].values
+        amr_score_pred = final_results['VF-AMR-2-exp-log2fc'].values
+        amr_score_target = self.test_df['VF-AMR-2-log2fc_ag'].values
         self.assertTrue(
             np.allclose(amr_score_pred, amr_score_target, atol=1e-3),
             f"AMR score predictions: {amr_score_pred} do not match target scores: {amr_score_target}",
         )   
 
         log.info("checkpoint 2.5")
-        eas_score_pred = final_results['D2C-EAS-2-exp-log2fc'].values
-        eas_score_target = self.test_df['D2C-EAS-2-log2fc_ag'].values
+        eas_score_pred = final_results['VF-EAS-2-exp-log2fc'].values
+        eas_score_target = self.test_df['VF-EAS-2-log2fc_ag'].values
         self.assertTrue(
             np.allclose(eas_score_pred, eas_score_target, atol=1e-3),
             f"EAS score predictions: {eas_score_pred} do not match target scores: {eas_score_target}",
         )
 
         log.info("checkpoint 2.6")
-        weighted_score_pred = final_results['D2C-agg-log2fc-weighted'].values
-        weighted_score_target = self.test_df['D2C-agg-log2fc-weighted_ag'].values
+        weighted_score_pred = final_results['VF-agg-log2fc-weighted'].values
+        weighted_score_target = self.test_df['VF-agg-log2fc-weighted_ag'].values
         self.assertTrue(
             np.allclose(weighted_score_pred, weighted_score_target, atol=1e-3),
             f"Weighted score predictions: {weighted_score_pred} do not match target scores: {weighted_score_target}",
@@ -272,8 +272,8 @@ class TestVariantProcessor(unittest.TestCase):
 
         final_results = self.processor.eqtl_scores(predictions_df)
 
-        sas_score_pred = final_results['D2C-SAS-2-exp-log2fc'].values
-        sas_score_target = self.test_df['D2C-SAS-2-log2fc_pcg'].values
+        sas_score_pred = final_results['VF-SAS-2-exp-log2fc'].values
+        sas_score_target = self.test_df['VF-SAS-2-log2fc_pcg'].values
 
         self.assertTrue(
             np.allclose(sas_score_pred, sas_score_target, atol=1e-3),
@@ -281,40 +281,40 @@ class TestVariantProcessor(unittest.TestCase):
         )
 
         log.info("checkpoint 2.2")
-        eur_score_pred = final_results['D2C-EUR-2-exp-log2fc'].values
-        eur_score_target = self.test_df['D2C-EUR-2-log2fc_pcg'].values
+        eur_score_pred = final_results['VF-EUR-2-exp-log2fc'].values
+        eur_score_target = self.test_df['VF-EUR-2-log2fc_pcg'].values
 
         self.assertTrue(
             np.allclose(eur_score_pred, eur_score_target, atol=1e-3),
             f"EUR score predictions: {eur_score_pred} do not match target scores: {eur_score_target}",
         )
         log.info("checkpoint 2.3")
-        afr_score_pred = final_results['D2C-AFR-2-exp-log2fc'].values
-        afr_score_target = self.test_df['D2C-AFR-2-log2fc_pcg'].values
+        afr_score_pred = final_results['VF-AFR-2-exp-log2fc'].values
+        afr_score_target = self.test_df['VF-AFR-2-log2fc_pcg'].values
         self.assertTrue(
             np.allclose(afr_score_pred, afr_score_target, atol=1e-3),
             f"AFR score predictions: {afr_score_pred} do not match target scores: {afr_score_target}",
         )
 
         log.info("checkpoint 2.4")
-        amr_score_pred = final_results['D2C-AMR-2-exp-log2fc'].values
-        amr_score_target = self.test_df['D2C-AMR-2-log2fc_pcg'].values
+        amr_score_pred = final_results['VF-AMR-2-exp-log2fc'].values
+        amr_score_target = self.test_df['VF-AMR-2-log2fc_pcg'].values
         self.assertTrue(
             np.allclose(amr_score_pred, amr_score_target, atol=1e-3),
             f"AMR score predictions: {amr_score_pred} do not match target scores: {amr_score_target}",
         )   
 
         log.info("checkpoint 2.5")
-        eas_score_pred = final_results['D2C-EAS-2-exp-log2fc'].values
-        eas_score_target = self.test_df['D2C-EAS-2-log2fc_pcg'].values
+        eas_score_pred = final_results['VF-EAS-2-exp-log2fc'].values
+        eas_score_target = self.test_df['VF-EAS-2-log2fc_pcg'].values
         self.assertTrue(
             np.allclose(eas_score_pred, eas_score_target, atol=1e-3),
             f"EAS score predictions: {eas_score_pred} do not match target scores: {eas_score_target}",
         )
 
         log.info("checkpoint 2.6")
-        weighted_score_pred = final_results['D2C-agg-log2fc-weighted'].values
-        weighted_score_target = self.test_df['D2C-agg-log2fc-weighted_pcg'].values
+        weighted_score_pred = final_results['VF-agg-log2fc-weighted'].values
+        weighted_score_target = self.test_df['VF-agg-log2fc-weighted_pcg'].values
         self.assertTrue(
             np.allclose(weighted_score_pred, weighted_score_target, atol=1e-3),
             f"Weighted score predictions: {weighted_score_pred} do not match target scores: {weighted_score_target}",
