@@ -171,14 +171,17 @@ class _BaseManifestLookup:
             log.info(f"Using cached file: {dst}")
             return dst
 
-        lock = FileLock(dst + ".lock")
-        with lock:
+        with FileLock(dst + ".lock"):
             if os.path.exists(dst):
                 return dst
 
             # populate fsspec simplecache; returns a local *hashed* path in out_dir
             s3_uri = f"simplecache::s3://{self.bucket}/{rel}"
-            cached = fsspec.open_local(s3_uri, **fsspec_storage_opts)
+            try:
+                cached = fsspec.open_local(s3_uri, **fsspec_storage_opts)
+            except Exception as e:
+                log.error(f"Failed to download from S3: {s3_uri}, error: {e}")
+                raise
 
             # same filesystem → zero-copy publish via hardlink
             try:
@@ -186,6 +189,7 @@ class _BaseManifestLookup:
             except FileExistsError:
                 pass                             # someone else won the race
             except OSError as e:
+                log.error(f"Failed to create hardlink from {cached} to {dst}: {e}")
                 raise
             return dst 
             

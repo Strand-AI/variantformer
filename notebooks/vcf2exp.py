@@ -8,7 +8,7 @@
 
 import marimo
 
-__generated_with = "0.17.0"
+__generated_with = "0.17.6"
 app = marimo.App(
     app_title="VCF2Expression with Anatomagram",
     css_file="czi-sds-theme.css",
@@ -47,7 +47,6 @@ def _():
         EnhancedVCFExpressionConverter,
         Path,
         VCFProcessor,
-        ff,
         go,
         leaves_list,
         linkage,
@@ -55,17 +54,13 @@ def _():
         np,
         os,
         pd,
-        pdist,
-        px,
         squareform,
-        tempfile,
     )
 
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     # VCF2Expression: Individual-Level Gene Expression Prediction with VariantFormer
 
     **Estimated time to complete:** 15-20 minutes | **Model:** VariantFormer (1.2B parameters)
@@ -81,15 +76,13 @@ def _(mo):
     - **Input Data**: VCF file with genetic variants (GRCh38 reference genome)
     - **Model**: Pre-trained VariantFormer checkpoint (14GB)
     - **Software**: DNA2Cell package with anatomogram visualization components
-    """
-    )
+    """)
     return
 
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Understanding VariantFormer
 
     VariantFormer is a 1.2-billion-parameter transformer foundation model that predicts how an individual's unique combination of genetic variants affects gene expression across all major tissues of the human body. This tutorial demonstrates how VariantFormer can be used to analyze variant-to-expression relationships at the individual level—the first model capable of cross-gene, cross-tissue expression prediction from individual whole genomes.
@@ -120,8 +113,7 @@ def _(mo):
     4. **Interactive Visualization** → Explore results using anatomogram visualizations
 
     Let's begin by loading a VCF file for analysis.
-    """
-    )
+    """)
     return
 
 
@@ -134,14 +126,16 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md("""## Step 1: Load a VCF File""")
+    mo.md("""
+    ## Step 1: Load a VCF File
+    """)
     return
 
 
 @app.cell(hide_code=True)
 def _(mo):
     vcf_file_browser = mo.ui.file_browser(
-        initial_path="/mnt/czi-sci-ai/intrinsic-variation-gene-ex-2/project_gene_regulation/dna2cell_training/v2_pcg_flash2/sample_vcf/",
+        initial_path="./_artifacts",
         filetypes=[".vcf", ".vcf.gz", ".gz"],
         selection_mode="file",
         multiple=False,
@@ -161,8 +155,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Step 2: Configure Analysis Parameters
 
     ### Selecting Genes and Tissues
@@ -182,13 +175,12 @@ def _(mo):
 
     **Tissue Coverage:**
     Analysis includes all major organ systems: 16 brain regions, cardiovascular (heart, blood, arteries), digestive (liver, pancreas, stomach), respiratory (lung), urinary (kidney), musculoskeletal, endocrine, and immune tissues, plus 8 cancer cell lines commonly used in genomics research.
-    """
-    )
+    """)
     return
 
 
 @app.cell(hide_code=True)
-def _(VCFProcessor, mo):
+def _(VCFProcessor, mo, pd):
     # Initialize VCF processor for expression analysis
     vcf_processor = VCFProcessor(model_class='v4_pcg')
 
@@ -297,11 +289,18 @@ def _(VCFProcessor, mo):
         gene_id_to_label=gene_id_to_label,
         tissue_options=tissue_options,
     ))
-    return genes_df, selected_genes, selected_tissues, tissues_df, gene_id_to_label, vcf_processor
+    return (
+        gene_id_to_label,
+        genes_df,
+        selected_genes,
+        selected_tissues,
+        tissues_df,
+        vcf_processor,
+    )
 
 
 @app.cell
-def _(mo, selected_genes, selected_tissues, genes_df, tissues_df):
+def _(genes_df, mo, selected_genes, selected_tissues, tissues_df):
     # Display selection summary (separate cell to avoid accessing .value in creation cell)
     mo.md(f"""
     **Selection Summary**:
@@ -314,7 +313,7 @@ def _(mo, selected_genes, selected_tissues, genes_df, tissues_df):
 
 
 @app.cell
-def _(mo, selected_genes, genes_df):
+def _(genes_df, mo, selected_genes):
     # Filter genes table based on dropdown selection
     # With dict format, selected_genes.value is list of gene IDs (keys)
     _selected_gene_ids = selected_genes.value
@@ -333,12 +332,11 @@ def _(mo, selected_genes, genes_df):
         show_column_summaries=False,
         label=f"Showing {len(_filtered_genes_df)} of {len(genes_df)} genes"
     )
-
     return (genes_table_filtered,)
 
 
 @app.cell
-def _(mo, selected_genes, genes_table_filtered):
+def _(genes_table_filtered, mo, selected_genes):
     # Display gene selection UI
     mo.vstack([
         mo.md("### Gene Selection"),
@@ -368,7 +366,6 @@ def _(mo, selected_tissues, tissues_df):
         show_column_summaries=False,
         label=f"Showing {len(_filtered_tissues_df)} of {len(tissues_df)} tissues"
     )
-
     return (tissues_table_filtered,)
 
 
@@ -410,13 +407,15 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-
-
-
-
-
-@app.cell(hide_code=True)
-def _(mo, os, selected_genes, selected_tissues, vcf_file_browser, gene_id_to_label, DEFAULT_VCF_PATH):
+def _(
+    DEFAULT_VCF_PATH,
+    gene_id_to_label,
+    mo,
+    os,
+    selected_genes,
+    selected_tissues,
+    vcf_file_browser,
+):
     # Format gene names for display
     # With dict format {label: gene_id}, selected_genes.value returns list of gene_ids
     _gene_count = len(selected_genes.value)
@@ -432,7 +431,7 @@ def _(mo, os, selected_genes, selected_tissues, vcf_file_browser, gene_id_to_lab
     # Get VCF file path from file browser (use local variable - not returned)
     if vcf_file_browser.value and len(vcf_file_browser.value) > 0:
         _vcf_display_path = vcf_file_browser.value[0]
-        _vcf_display = os.path.basename(_vcf_display_path)
+        _vcf_display = os.path.basename(_vcf_display_path.id)
     else:
         _vcf_display_path = DEFAULT_VCF_PATH
         _vcf_display = "HG00096.vcf.gz (default)"
@@ -453,8 +452,7 @@ def _(mo, os, selected_genes, selected_tissues, vcf_file_browser, gene_id_to_lab
 
 @app.cell
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Step 3: Running VariantFormer Predictions
 
     ### Model Execution Pipeline
@@ -483,22 +481,20 @@ def _(mo):
     - Results formatted for downstream visualization and analysis
 
     Progress indicators below track the analysis pipeline.
-    """
-    )
+    """)
     return
 
 
 @app.cell(hide_code=True)
 def _(
-    os,
+    DEFAULT_VCF_PATH,
+    gene_id_to_label,
     pd,
     run_analysis_button,
     selected_genes,
     selected_tissues,
     vcf_file_browser,
     vcf_processor,
-    gene_id_to_label,
-    DEFAULT_VCF_PATH,
 ):
     # Gate execution behind run button
     if not run_analysis_button.value:
@@ -519,7 +515,7 @@ def _(
     else:
         # Get VCF path from file browser
         if vcf_file_browser.value and len(vcf_file_browser.value) > 0:
-            vcf_path = vcf_file_browser.value[0]  # Get selected file path (string)
+            vcf_path = vcf_file_browser.value[0].id  # Get selected file path (string)
             print(f"📁 Using selected VCF: {vcf_path}")
         else:
             vcf_path = DEFAULT_VCF_PATH
@@ -574,7 +570,7 @@ def _(
             gene_id = None
 
     globals().update(dict(expression_predictions=expression_predictions, query_df=query_df, all_gene_ids=all_gene_ids))
-    return (expression_predictions, vcf_path, gene_id)
+    return (expression_predictions,)
 
 
 @app.cell
@@ -600,8 +596,7 @@ def _(expression_predictions, mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Step 4: Interactive Expression Visualization
 
     ### Understanding Individual-Level Expression Predictions
@@ -629,13 +624,17 @@ def _(mo):
     - Results can be compared to GTEx population distributions to assess variant rarity
 
     **Note**: These are model predictions conditioned on the individual's variant genotype—they represent the model's learned mapping from variant profiles to expression phenotypes based on GTEx training data.
-    """
-    )
+    """)
     return
 
 
 @app.cell
-def _(EnhancedVCFExpressionConverter, expression_predictions, selected_genes, aggregation_strategy):
+def _(
+    EnhancedVCFExpressionConverter,
+    aggregation_strategy,
+    expression_predictions,
+    selected_genes,
+):
     enhanced_converter = EnhancedVCFExpressionConverter(aggregation_strategy=aggregation_strategy.value)
 
     # Use first selected gene for anatomagram
@@ -658,7 +657,6 @@ def _(EnhancedVCFExpressionConverter, expression_predictions, selected_genes, ag
         enhanced_tooltips = {}
         uberon_names = {}
         uberon_descriptions = {}
-
     return (
         anatomagram_data,
         enhanced_tooltips,
@@ -673,12 +671,12 @@ def _(EnhancedVCFExpressionConverter, expression_predictions, selected_genes, ag
 def _(
     AnatomagramMultiViewWidget,
     anatomagram_data,
+    color_palette,
     enhanced_tooltips,
     first_gene_id,
     mo,
-    uberon_names,
-    color_palette,
     scale_type,
+    uberon_names,
 ):
     # Create multi-view anatomagram widget with reactive controls
     if anatomagram_data is not None and first_gene_id is not None:
@@ -699,7 +697,6 @@ def _(
     else:
         multi_widget = None
         tabs = None
-
     return multi_widget, tabs
 
 
@@ -799,7 +796,7 @@ def _(mo):
     """)
 
     mo.hstack([aggregation_strategy, color_palette, scale_type], justify="center")
-    return (aggregation_strategy, color_palette, scale_type)
+    return aggregation_strategy, color_palette, scale_type
 
 
 @app.cell
@@ -814,12 +811,9 @@ def _(table_summary):
     return
 
 
-
-
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Interactive Heatmap Visualization
 
     ### Genome-Wide Expression Heatmap
@@ -838,13 +832,12 @@ def _(mo):
     - Clustered ordering groups similar genes/tissues together
     - Use pan/zoom to explore regions of interest
     - Hover for detailed gene/tissue/value information
-    """
-    )
+    """)
     return
 
 
 @app.cell(hide_code=True)
-def _(Path, mo, np, pd):
+def _(Path, mo, np):
     # Configuration
     PARQUET_PATH = Path(__file__).parent / "example_data" / "HG00096_vcf2exp_predictions.parquet"
     APPLY_LOG1P = True
@@ -867,10 +860,6 @@ def _(Path, mo, np, pd):
         PARQUET_PATH,
         REVERSE_COLORSCALE,
         ZSCORE_PER_GENE,
-        go,
-        leaves_list,
-        linkage,
-        squareform,
     )
 
 
@@ -943,7 +932,7 @@ def _(
         print(f"   ✓ clipped to [{lo:.1f}, {hi:.1f}]")
 
     print(f"   Data range: [{A_hm.min():.3f}, {A_hm.max():.3f}]")
-    return A_hm, gene_ids_hm, genes_hm, n_tissues, tissues_hm, unwrap_nested_array
+    return A_hm, genes_hm, tissues_hm
 
 
 @app.cell
@@ -968,19 +957,12 @@ def _(A_hm, genes_hm, leaves_list, linkage, np, squareform, tissues_hm):
     tissues_ord_hm = [tissues_hm[j] for j in col_leaves_hm]
 
     print(f"✅ Clustering complete: {A_ord_hm.shape[0]:,} × {A_ord_hm.shape[1]}")
-    return (
-        A_ord_hm,
-        col_leaves_hm,
-        genes_ord_hm,
-        row_leaves_hm,
-        tissues_ord_hm,
-    )
+    return A_ord_hm, genes_ord_hm, tissues_ord_hm
 
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Tissue Hierarchical Clustering Dendrogram
 
     ### Understanding Tissue Relationships
@@ -998,8 +980,7 @@ def _(mo):
     - Hormone-responsive tissues may cluster (breast, ovary, prostate)
 
     This dendrogram uses the same correlation distance metric and Ward linkage as the heatmap column ordering.
-    """
-    )
+    """)
     return
 
 
@@ -1081,7 +1062,14 @@ def _(dendro_fig):
 
 
 @app.cell
-def _(A_ord_hm, COLORSCALE, REVERSE_COLORSCALE, genes_ord_hm, go, tissues_ord_hm):
+def _(
+    A_ord_hm,
+    COLORSCALE,
+    REVERSE_COLORSCALE,
+    genes_ord_hm,
+    go,
+    tissues_ord_hm,
+):
     # Create standalone heatmap figure
     print("🎨 Creating gene expression heatmap...")
 
@@ -1195,13 +1183,12 @@ def _(
 
     **Note:** Plotly automatically optimizes rendering (WebGL for large matrices, SVG for small subsets).
     """)
-    return (plot_subset,)
+    return
 
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Understanding Model Predictions
 
     ### Scientific Interpretation of Expression Outputs
@@ -1307,8 +1294,7 @@ def _(mo):
     ---
 
     *Thank you for using VCF2Expression with VariantFormer. We hope this research tool advances scientific understanding of variant regulatory effects and gene expression biology.*
-    """
-    )
+    """)
     return
 
 
