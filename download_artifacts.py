@@ -99,6 +99,10 @@ ARTIFACTS = [
         local_path="be73e19a.pq",
     ),
     Artifact(
+        remote_uri=f"s3://{DEFAULT_BUCKET}/gold_data/b23c9b69.pq",
+        local_path="b23c9b69.pq",
+    ),
+    Artifact(
         remote_uri=f"s3://{DEFAULT_BUCKET}/model/common/reference_genomes/data_split/hg38/cres/data_split/hg38_chr19.pkl.gz",
         local_path="reference_genomes/data_split/hg38/cres/data_split/hg38_chr19.pkl.gz",
     ),
