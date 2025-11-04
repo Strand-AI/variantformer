@@ -251,6 +251,7 @@ class VEPDataset:
     ) -> Tuple[pd.DataFrame, Dict]:
         """Load gene CRE and sequence data"""
         # Load cre sequence data
+        import ipdb; ipdb.set_trace()
         cre_seq_path = self.cre_seq_manifest.get_file_path(chromosome, population)
         cre_df = self._map_files(cre_seq_path, gene["gene_id"])
 
