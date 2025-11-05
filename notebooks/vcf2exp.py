@@ -223,11 +223,12 @@ def _(VCFProcessor, mo, pd):
         else:
             print(f"⚠️  Brain gene {symbol} not found in dataset")
 
-    # Multi-select for genes (searchable by default)
+    # Multi-select with max_selections=1 for searchable single gene selection
     selected_genes = mo.ui.multiselect(
         options=gene_options,
         value=default_brain_gene_labels[:1] if len(default_brain_gene_labels) > 0 else [],  # Start with APOE only
-        label="Select Genes to Analyze"
+        label="Select Gene to Analyze",
+        max_selections=1
     )
 
     # Create comprehensive tissue selection for full anatomagram coverage
@@ -311,9 +312,10 @@ def _(VCFProcessor, mo, pd):
 @app.cell
 def _(genes_df, mo, selected_genes, selected_tissues, tissues_df):
     # Display selection summary (separate cell to avoid accessing .value in creation cell)
+    _gene_count = len(selected_genes.value)  # List with 0 or 1 element
     mo.md(f"""
     **Selection Summary**:
-    - **Genes**: {len(selected_genes.value)} selected
+    - **Gene**: {_gene_count} selected
     - **Tissues**: {len(selected_tissues.value)} selected
 
     💡 **Available**: {len(genes_df):,} total genes across {len(tissues_df)} tissues
@@ -322,22 +324,22 @@ def _(genes_df, mo, selected_genes, selected_tissues, tissues_df):
 
 
 @app.cell
-def _(genes_df, mo, selected_genes):
-    # Filter genes table based on dropdown selection
-    # With dict format, selected_genes.value is list of gene IDs (keys)
+def _(genes_df, mo, pd, selected_genes):
+    # Filter genes table based on multiselect with max_selections=1
+    # selected_genes.value is a list with 0 or 1 gene IDs
     _selected_gene_ids = selected_genes.value
 
     if len(_selected_gene_ids) > 0:
-        # Show only selected genes
-        _filtered_genes_df = genes_df[genes_df['gene_id'].isin(_selected_gene_ids)]
+        # Show only selected gene
+        _filtered_genes_df = genes_df[genes_df['gene_id'] == _selected_gene_ids[0]]
     else:
-        # Show all genes when nothing selected
-        _filtered_genes_df = genes_df
+        # Show nothing when nothing selected
+        _filtered_genes_df = pd.DataFrame(columns=genes_df.columns)
 
-    # Create filtered table with all columns visible
+    # Create filtered table without checkboxes
     genes_table_filtered = mo.ui.table(
         _filtered_genes_df,
-        selection="multi",
+        selection=None,
         show_column_summaries=False,
         label=f"Showing {len(_filtered_genes_df)} of {len(genes_df)} genes"
     )
@@ -349,7 +351,7 @@ def _(genes_table_filtered, mo, selected_genes):
     # Display gene selection UI
     mo.vstack([
         mo.md("### Gene Selection"),
-        mo.md("**Select genes using dropdown** (table shows selected genes):"),
+        mo.md("**Select a gene using dropdown** (table shows selected gene):"),
         selected_genes,
         genes_table_filtered
     ])
@@ -357,7 +359,7 @@ def _(genes_table_filtered, mo, selected_genes):
 
 
 @app.cell
-def _(mo, selected_tissues, tissues_df):
+def _(mo, pd, selected_tissues, tissues_df):
     # Filter tissues table based on dropdown selection
     _selected_tissue_names = selected_tissues.value
 
@@ -365,13 +367,13 @@ def _(mo, selected_tissues, tissues_df):
         # Show only selected tissues
         _filtered_tissues_df = tissues_df[tissues_df['tissue_name'].isin(_selected_tissue_names)]
     else:
-        # Show all tissues when nothing selected
-        _filtered_tissues_df = tissues_df
+        # Show nothing when nothing selected
+        _filtered_tissues_df = pd.DataFrame(columns=tissues_df.columns)
 
-    # Create filtered table
+    # Create filtered table without checkboxes
     tissues_table_filtered = mo.ui.table(
         _filtered_tissues_df,
-        selection="multi",
+        selection=None,
         show_column_summaries=False,
         label=f"Showing {len(_filtered_tissues_df)} of {len(tissues_df)} tissues"
     )
@@ -395,10 +397,9 @@ def _(mo):
     # Info callout and run button in vstack layout
     info_callout = mo.md("""
     **Ready to analyze?**
-    - Select genes and tissues above
+    - Select a gene and tissues above
     - Click the button to run VariantFormer predictions
-    - **Timing**: ~30 seconds per gene across 63 tissues (H100 GPU)
-    - Example: 5 genes ≈ 2.5 minutes, 10 genes ≈ 5 minutes
+    - **Timing**: ~30 seconds for one gene across 63 tissues (H100 GPU)
     """).callout(kind="info")
 
     run_analysis_button = mo.ui.run_button(
@@ -426,16 +427,13 @@ def _(
     vcf_file_browser,
 ):
     # Format gene names for display
-    # With dict format {label: gene_id}, selected_genes.value returns list of gene_ids
-    _gene_count = len(selected_genes.value)
-    if _gene_count == 0:
-        _gene_display = "No genes selected"
-    elif _gene_count == 1:
+    # With multiselect (max_selections=1), selected_genes.value returns a list with 0 or 1 gene IDs
+    if len(selected_genes.value) == 0:
+        _gene_display = "No gene selected"
+    else:
         _gene_id = selected_genes.value[0]
         _gene_label = gene_id_to_label.get(_gene_id, _gene_id)
         _gene_display = f"`{_gene_label}`"
-    else:
-        _gene_display = f"{_gene_count} genes selected"
 
     # Get VCF file path from file browser (use local variable - not returned)
     if vcf_file_browser.value and len(vcf_file_browser.value) > 0:
@@ -450,7 +448,7 @@ def _(
 
     **Configuration:**
     - VCF File: `{_vcf_display}`
-    - Selected Genes: {_gene_display}
+    - Selected Gene: {_gene_display}
     - Tissues: {len(selected_tissues.value)} selected
 
     Analysis will begin automatically...
@@ -508,14 +506,14 @@ def _(
     # Gate execution behind run button
     if not run_analysis_button.value:
         print("⏸️  Ready to run analysis")
-        print("   Select genes and tissues above, then click 'Run Expression Analysis'")
+        print("   Select a gene and tissues above, then click 'Run Expression Analysis'")
         expression_predictions = None
         query_df = None
         all_gene_ids = []
         vcf_path = None
         gene_id = None
     elif len(selected_genes.value) == 0:
-        print("⚠️  No genes selected. Please select at least one gene.")
+        print("⚠️  No gene selected. Please select a gene.")
         expression_predictions = None
         query_df = None
         all_gene_ids = []
@@ -531,13 +529,13 @@ def _(
             print(f"📁 Using default VCF: {vcf_path}")
 
         try:
-            # Process first gene for now (will add gene switcher later)
-            # With dict format {label: gene_id}, selected_genes.value returns list of gene_ids
+            # Process the selected gene
+            # With multiselect (max_selections=1), selected_genes.value returns a list with 1 gene ID
             gene_id = selected_genes.value[0]  # Already the gene_id
             gene_label = gene_id_to_label.get(gene_id, gene_id)  # Look up formatted label
 
-            # Store all selected gene IDs for later use with gene switcher
-            all_gene_ids = selected_genes.value  # Already list of gene IDs
+            # Store gene ID (single value, but keep as list for consistency)
+            all_gene_ids = [gene_id]
 
             # Prepare comprehensive query for expression analysis
             selected_tissue_list = selected_tissues.value
@@ -550,9 +548,6 @@ def _(
             print(f"   VCF: {vcf_path}")
             print(f"   Gene: {gene_label}")
             print(f"   Gene ID: {gene_id}")
-            if len(selected_genes.value) > 1:
-                print(f"   Note: {len(selected_genes.value)} genes selected - processing first gene for anatomagram")
-                print(f"   Remaining genes: {[g[0] for g in selected_genes.value[1:]]}")
             print(f"   Tissues: {len(selected_tissue_list)} tissues selected")
             print(f"   First 5 tissues: {selected_tissue_list[:5]}")
             print(f"   Query shape: {query_df.shape}")
@@ -646,8 +641,8 @@ def _(
 ):
     enhanced_converter = EnhancedVCFExpressionConverter(aggregation_strategy=aggregation_strategy.value)
 
-    # Use first selected gene for anatomagram
-    # With dict format, selected_genes.value is list of gene IDs directly
+    # Use the selected gene for anatomagram
+    # With multiselect (max_selections=1), selected_genes.value is a list with 0 or 1 gene IDs
     if expression_predictions is not None and len(selected_genes.value) > 0:
         first_gene_id = selected_genes.value[0]  # Already the gene_id
 
