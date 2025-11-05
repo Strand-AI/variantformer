@@ -17,6 +17,15 @@ app = marimo.App(
 
 @app.cell(hide_code=True)
 def _():
+
+    import logging
+
+    # Suppress verbose debug logs from markdown and matplotlib
+    logging.getLogger('MARKDOWN').setLevel(logging.INFO)  # or WARNING
+    logging.getLogger('matplotlib').setLevel(logging.INFO)
+    logging.getLogger('matplotlib.font_manager').setLevel(logging.INFO)
+    logging.getLogger('matplotlib.pyplot').setLevel(logging.INFO)
+
     import marimo as mo
     import sys
     from pathlib import Path
@@ -118,7 +127,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _():
+def _(Path):
     # Constants for VCF analysis
     DEFAULT_VCF_PATH = str(Path(__file__).parent.parent / '_artifacts' / 'HG00096.vcf.gz')
     return (DEFAULT_VCF_PATH,)
