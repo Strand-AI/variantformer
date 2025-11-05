@@ -245,18 +245,49 @@ def _(adrisk, mo):
     # Find the label for the default gene
     default_label = [k for k, v in gene_options.items() if v == default_gene_id][0]
 
-    # Single-select dropdown
-    gene_selector = mo.ui.dropdown(
+    # Multi-select with max_selections=1 for searchable single gene selection
+    gene_selector = mo.ui.multiselect(
         options=gene_options,
-        value=default_label,
-        label="Select Gene for AD Risk Analysis"
+        value=[default_label],
+        label="Select Gene for AD Risk Analysis",
+        max_selections=1
     )
 
+    return gene_selector, genes_with_ad, gene_options
+
+
+@app.cell
+def _(gene_selector, genes_with_ad, mo, pd):
+    # Filter genes table based on multiselect with max_selections=1
+    # gene_selector.value is a list with 0 or 1 gene IDs
+    _selected_gene_ids = gene_selector.value
+
+    if len(_selected_gene_ids) > 0:
+        # Show only selected gene
+        _filtered_genes_df = genes_with_ad[genes_with_ad['gene_id'] == _selected_gene_ids[0]]
+    else:
+        # Show nothing when nothing selected
+        _filtered_genes_df = pd.DataFrame(columns=genes_with_ad.columns)
+
+    # Create filtered table without checkboxes
+    genes_table_filtered = mo.ui.table(
+        _filtered_genes_df,
+        selection=None,
+        show_column_summaries=False,
+        label=f"Showing {len(_filtered_genes_df)} of {len(genes_with_ad)} genes"
+    )
+    return (genes_table_filtered,)
+
+
+@app.cell
+def _(gene_selector, genes_table_filtered, mo):
+    # Display gene selection UI
     mo.vstack([
-        mo.md(f"**{len(genes_with_ad)} genes** have AD risk predictors available"),
-        gene_selector
+        mo.md("**Select a gene using dropdown** (table shows selected gene):"),
+        gene_selector,
+        genes_table_filtered
     ])
-    return gene_selector, genes_with_ad
+    return
 
 
 @app.cell
@@ -286,13 +317,19 @@ def _(mo):
 
 
 @app.cell
-def _(adrisk, mo):
+def _(adrisk, mo, pd):
     # Get tissues that have AD predictors available (from manifest)
     available_tissue_ids_in_manifest = adrisk.ad_preds.get_unique('tissue_id')
 
     # Filter adrisk.tissue_map to only tissues with AD predictors
     tissues_with_ad = adrisk.tissue_map[adrisk.tissue_map.index.isin(available_tissue_ids_in_manifest)]
     ad_tissue_names = list(tissues_with_ad['tissue'])
+
+    # Create tissue dataframe for display
+    tissues_df = pd.DataFrame({
+        'tissue_name': ad_tissue_names,
+        'tissue_id': [adrisk.tissue_map[adrisk.tissue_map['tissue'] == name].index[0] for name in ad_tissue_names]
+    })
 
     # Multi-select with all AD-available tissues selected by default
     tissue_selector = mo.ui.multiselect(
@@ -301,12 +338,54 @@ def _(adrisk, mo):
         label="Select Tissues for Analysis"
     )
 
+    return tissue_selector, tissues_df, tissues_with_ad
+
+
+@app.cell
+def _(mo, pd, tissue_selector, tissues_df):
+    # Filter tissues table based on multiselect selection
+    _selected_tissue_names = tissue_selector.value
+
+    if len(_selected_tissue_names) > 0:
+        # Show only selected tissues
+        _filtered_tissues_df = tissues_df[tissues_df['tissue_name'].isin(_selected_tissue_names)]
+    else:
+        # Show nothing when nothing selected
+        _filtered_tissues_df = pd.DataFrame(columns=tissues_df.columns)
+
+    # Create filtered table without checkboxes
+    tissues_table_filtered = mo.ui.table(
+        _filtered_tissues_df,
+        selection=None,
+        show_column_summaries=False,
+        label=f"Showing {len(_filtered_tissues_df)} of {len(tissues_df)} tissues"
+    )
+    return (tissues_table_filtered,)
+
+
+@app.cell
+def _(mo, tissue_selector, tissues_table_filtered):
+    # Display tissue selection UI
     mo.vstack([
-        mo.md(f"**{len(ad_tissue_names)} tissues** have AD risk predictors available (out of 63 GTEx tissues)"),
+        mo.md("**Select tissues using dropdown** (table shows selected tissues):"),
         tissue_selector,
-        mo.md("*All tissues with AD predictors selected by default*")
+        tissues_table_filtered
     ])
-    return (tissue_selector,)
+    return
+
+
+@app.cell
+def _(gene_selector, genes_with_ad, mo, tissue_selector, tissues_df):
+    # Display selection summary
+    _gene_count = len(gene_selector.value)  # List with 0 or 1 element
+    mo.md(f"""
+    **Selection Summary**:
+    - **Gene**: {_gene_count} selected
+    - **Tissues**: {len(tissue_selector.value)} selected
+
+    💡 **Available**: {len(genes_with_ad):,} genes with AD predictors across {len(tissues_df)} tissues
+    """)
+    return
 
 
 @app.cell
@@ -317,8 +396,8 @@ def _(mo):
 
 @app.cell
 def _(adrisk, gene_selector, tissue_selector):
-    # Get gene_id from dropdown (dropdown returns gene_id as value)
-    selected_gene_id = gene_selector.value
+    # Get gene_id from multiselect (returns list with 0 or 1 gene IDs)
+    selected_gene_id = gene_selector.value[0] if len(gene_selector.value) > 0 else None
 
     # Convert selected tissue names to tissue IDs
     selected_tissue_names = tissue_selector.value
@@ -331,9 +410,13 @@ def _(adrisk, gene_selector, tissue_selector):
 
 
 @app.cell
-def _(DEFAULT_VCF_PATH, gene_selector, mo, tissue_selector, vcf_file_browser):
+def _(DEFAULT_VCF_PATH, gene_options, gene_selector, mo, tissue_selector, vcf_file_browser):
     # Display configuration summary
-    gene_label = gene_selector.value if isinstance(gene_selector.value, str) else "Loading..."
+    # With multiselect (max_selections=1), gene_selector.value returns a list with 0 or 1 labels
+    if len(gene_selector.value) == 0:
+        gene_label = "No gene selected"
+    else:
+        gene_label = gene_selector.value[0]  # The full label (e.g., "APOE | ENSG...")
 
     # Determine VCF display name
     if vcf_file_browser.value and len(vcf_file_browser.value) > 0:
