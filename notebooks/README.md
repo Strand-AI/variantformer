@@ -38,7 +38,7 @@ See the main [README](../README.md#setup) for:
 
 ## Installing Marimo
 
-After running `install_local.sh`, ensure Marimo dependencies are installed:
+After running `install.sh` in the parent directory, ensure Marimo dependencies are installed:
 
 ```bash
 source .venv/bin/activate
@@ -74,13 +74,6 @@ Marimo opens a web interface in your browser. The notebook executes reactively -
 - **Format:** Standard VCF v4.2+ (bgzipped or uncompressed)
 - **Reference:** GRCh38/hg38 (required - must match training data)
 - **Sample VCF:** Downloaded to `_artifacts/HG00096.vcf.gz` by `download_artifacts.py`
-
-**Note:** The sample VCF in _artifacts is a full whole-genome file (7.2GB). For faster tutorial execution, a smaller subset is available on CZI clusters at:
-```
-/mnt/czi-sci-ai/.../sample_vcf/HG00096.vcf.gz (64MB)
-```
-
-You can select alternative VCF files using the file browser in each notebook.
 
 ### Model Checkpoints
 Downloaded automatically by `download_artifacts.py` to `_artifacts/`:
@@ -126,14 +119,6 @@ The notebooks suppress debug logging by default. If you see excessive logs, chec
 logging.getLogger('MARKDOWN').setLevel(logging.INFO)
 logging.getLogger('matplotlib').setLevel(logging.INFO)
 ```
-
-### Module not found: flash_attn
-Flash Attention is required but must be installed manually:
-```bash
-uv pip install flash-attn --no-build-isolation
-```
-
-See main [README](../README.md#note-on-flash-attention) for flash-attention installation details.
 
 ### Slow execution with large VCF files
 The sample VCF (_artifacts/HG00096.vcf.gz) is a full whole-genome file (7.2GB). For faster tutorial execution:
