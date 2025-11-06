@@ -132,7 +132,7 @@ example, via `-v .:/app` or `-v ./_artifacts:/app/_artifacts/`).
 ## 📓 Available Notebooks
 
 
-=======
+
 | Notebook | Description |
 |----------|-------------|
 | [`vcf2exp.ipynb`](notebooks/vcf2exp.ipynb) | Predict tissue-specific gene expression from VCF files containing genetic variants |
