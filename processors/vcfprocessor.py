@@ -161,30 +161,46 @@ class VCFProcessor:
                 
                 log.info(f"Created and indexed VCF: {final_path}")
             else:
-                # Merge with existing VCF
+                # Merge with existing VCF - insert variants into same sample
                 log.info(f"Merging with existing VCF: {vcf_path}")
                 
-                # First, sort and compress the temporary VCF
+                # Extract sample name from original VCF
+                sample_cmd = ["bcftools", "query", "-l", vcf_path]
+                result = subprocess.run(sample_cmd, capture_output=True, text=True, check=True)
+                original_sample = result.stdout.strip()
+                
+                # Update tmp VCF to use the same sample name
+                with open(tmp_vcf_path, 'r') as f:
+                    vcf_content = f.read()
+                vcf_content = vcf_content.replace('\tSAMPLE\n', f'\t{original_sample}\n')
+                with open(tmp_vcf_path, 'w') as f:
+                    f.write(vcf_content)
+                
+                # Compress and index new VCF
                 sorted_vcf_path = tmp_vcf_path.replace('.vcf', '.sorted.vcf.gz')
                 subprocess.run(["bcftools", "sort", "-o", sorted_vcf_path, "-O", "z", tmp_vcf_path], check=True)
                 subprocess.run(["tabix", "-p", "vcf", sorted_vcf_path], check=True)
                 
-                # Merge VCFs (allow duplicates to be overwritten)
+                # Concatenate VCFs (same sample, new variants)
                 final_path = output_path if output_path.endswith('.vcf.gz') else f"{output_path}.vcf.gz"
-                merge_cmd = [
-                    "bcftools", "merge",
+                concat_cmd = [
+                    "bcftools", "concat",
+                    "-a",  # Allow duplicates
+                    "-D",  # Remove duplicate positions
                     "-o", final_path,
                     "-O", "z",
-                    "--force-samples",  # Allow merging with same sample name
                     vcf_path,
                     sorted_vcf_path
                 ]
-                subprocess.run(merge_cmd, check=True)
+                subprocess.run(concat_cmd, check=True)
                 
-                # Index merged VCF
+                # Sort and index final VCF
+                temp_sorted = final_path.replace('.vcf.gz', '.temp.sorted.vcf.gz')
+                subprocess.run(["bcftools", "sort", "-o", temp_sorted, "-O", "z", final_path], check=True)
+                subprocess.run(["mv", temp_sorted, final_path], check=True)
                 subprocess.run(["tabix", "-p", "vcf", final_path], check=True)
                 
-                log.info(f"Merged and indexed VCF: {final_path}")
+                log.info(f"Concatenated and indexed VCF: {final_path}")
                 
                 # Clean up sorted temp file
                 os.remove(sorted_vcf_path)
