@@ -3,7 +3,7 @@ name = "VariantFormer"
 version = "0.1.0"
 description = "A tool for variant effect prediction and gene expression analysis"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "MIT"
 authors = [
     {name = "CZI", email = "info@chanzuckerberg.com"}
@@ -11,9 +11,9 @@ authors = [
 
 dependencies = [
     # Install PyTorch first
-    "torch~=2.7.0",
-    "torchaudio~=2.7.0",
-    "torchvision~=0.22.0",
+    "torch~=2.8.0",
+    "torchaudio~=2.8.0",
+    "torchvision",
     # Then other dependencies
     "tqdm",
     "fsspec",
@@ -28,6 +28,7 @@ dependencies = [
     "numpy~=2.2.5",
     "omegaconf~=2.3.0",
     "pandas~=2.2.3",
+    "pyarrow",
     "psutil~=7.0.0",
     "pybedtools~=0.12.0",
     "pynvml~=12.0.0",

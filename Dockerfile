@@ -59,8 +59,12 @@ ENV VIRTUAL_ENV=$UV_PROJECT_ENVIRONMENT
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONPATH=/app:/opt/venv/lib/python3.12/site-packages
 
+# installing dependencies
 COPY pyproject.toml ./
 RUN uv pip install -e .[notebook,test]
+# Note: the version in teh flash attention wheel are hardcoded and correspond to torch 2.8, cuda 12 and python 3.12. If you happen to have other versions
+# please pick the corresponding wheel from here: https://github.com/Dao-AILab/flash-attention/releases/tag/v2.8.3 or build it from source
+RUN uv pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3+cu12torch2.8cxx11abiTRUE-cp312-cp312-linux_x86_64.whl
 
 COPY . .
 
