@@ -213,7 +213,6 @@ class VCFProcessor:
         
         return final_path if output_path.endswith('.vcf.gz') else f"{output_path}.vcf.gz"
 
-
     def get_tissues(self):
         return self.tissue_vocab.keys()
 
