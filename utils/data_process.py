@@ -41,6 +41,7 @@ class ExtractSeqFromBed:
             bcftools_args = [
                 "bcftools",
                 "consensus",
+                "-r", region_str,  # Only read variants in this region (major perf fix)
                 "-H",
                 "I",
                 "-e",
@@ -51,6 +52,7 @@ class ExtractSeqFromBed:
             bcftools_args = [
                 "bcftools",
                 "consensus",
+                "-r", region_str,  # Only read variants in this region (major perf fix)
                 "-H",
                 "I",
                 "-e",
@@ -417,6 +419,7 @@ class ExtractSeqFromBed:
             bcftools_args = [
                 "bcftools",
                 "consensus",
+                "-r", region_str,  # Only read variants in this region (major perf fix)
                 "-H",
                 "I",
                 "-e",
@@ -427,6 +430,7 @@ class ExtractSeqFromBed:
             bcftools_args = [
                 "bcftools",
                 "consensus",
+                "-r", region_str,  # Only read variants in this region (major perf fix)
                 "-H",
                 "I",
                 "-e",
