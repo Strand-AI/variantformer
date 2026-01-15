@@ -92,19 +92,16 @@ class ExtractSeqFromBed:
 
         # If vcf_file is not None, run bcftools consensus
         # Command to extract the reference sequence and apply mutations
-        # PERF FIX: Use bcftools view -r to pre-filter VCF to region before consensus
-        # bcftools consensus doesn't support -r, so we pipe through bcftools view first
         if variant_type == "SNP":
             filter_expr = 'ALT~"<.*>" || TYPE!="snp"'
         else:
             filter_expr = 'ALT~"<.*>"'
 
-        # Use shell with process substitution for efficient region filtering
-        # This is ~100x faster than letting bcftools consensus scan the entire VCF
+        # Note: Process substitution with bcftools view fails on some systems due to
+        # bgzip requirements. Pass VCF directly - bcftools uses the index internally.
         cmd = (
             f'samtools faidx {reference_fasta} "{region_str}" | '
-            f'bcftools consensus -H I -e \'{filter_expr}\' '
-            f'<(bcftools view -r "{region_str}" "{vcf_file}")'
+            f'bcftools consensus -H I -e \'{filter_expr}\' {vcf_file}'
         )
         result = subprocess.run(
             cmd, shell=True, executable='/bin/bash', capture_output=True, text=True

@@ -50,10 +50,12 @@ def run_bcftools_consensus(
     else:
         filter_expr = 'ALT~"<.*>"'
 
+    # Note: We can't use process substitution with bcftools consensus because it
+    # requires indexed input. Instead, we pass the VCF directly and let bcftools
+    # use the index for region filtering internally.
     cmd = (
         f'samtools faidx {fasta_path} "{region_str}" | '
-        f'bcftools consensus -H I -e \'{filter_expr}\' '
-        f'<(bcftools view -r "{region_str}" "{vcf_path}")'
+        f'bcftools consensus -H I -e \'{filter_expr}\' {vcf_path}'
     )
 
     start_time = time.perf_counter()
@@ -63,7 +65,7 @@ def run_bcftools_consensus(
     elapsed = time.perf_counter() - start_time
 
     if result.returncode != 0:
-        # Fall back to reference
+        # Fall back to reference (no variants in region)
         cmd_ref = ["samtools", "faidx", fasta_path, region_str]
         result_ref = subprocess.run(cmd_ref, capture_output=True, text=True)
         if result_ref.returncode == 0:
