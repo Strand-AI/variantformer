@@ -16,6 +16,7 @@ dependencies = [
     "torchvision",
     # Then other dependencies
     "tqdm",
+    "pysam>=0.22.0",  # Fast VCF/BAM processing without subprocess overhead
     "fsspec",
     "s3fs",
     "boto3~=1.40.49",

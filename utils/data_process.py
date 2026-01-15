@@ -4,6 +4,37 @@ from multiprocessing import Pool
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 import pandas as pd
+import logging
+
+from utils.fast_consensus import FastConsensus, FastConsensusCache
+
+log = logging.getLogger(__name__)
+
+# Global flag to enable/disable FastConsensus (pysam-based)
+# Set to False to fall back to bcftools subprocess calls
+USE_FAST_CONSENSUS = True
+
+# Thread-local storage for FastConsensus instances per worker
+import threading
+_thread_local = threading.local()
+
+
+def get_fast_consensus(vcf_path: str, fasta_path: str) -> FastConsensus:
+    """
+    Get or create FastConsensus instance for this thread/worker.
+
+    Uses thread-local storage to maintain one FastConsensus per VCF per worker,
+    avoiding repeated VCF loading while remaining thread-safe.
+    """
+    if not hasattr(_thread_local, 'consensus_cache'):
+        _thread_local.consensus_cache = {}
+
+    cache_key = (vcf_path, fasta_path)
+    if cache_key not in _thread_local.consensus_cache:
+        log.info(f"Loading FastConsensus for {vcf_path}")
+        _thread_local.consensus_cache[cache_key] = FastConsensus(vcf_path, fasta_path)
+
+    return _thread_local.consensus_cache[cache_key]
 
 
 class ExtractSeqFromBed:
@@ -35,6 +66,20 @@ class ExtractSeqFromBed:
             else:
                 mutated_seq = "".join(result_ref.stdout.strip().split("\n")[1:])
                 return mutated_seq, 0
+
+        # Use FastConsensus (pysam-based) if enabled - ~100x faster than bcftools
+        if USE_FAST_CONSENSUS:
+            try:
+                consensus = get_fast_consensus(vcf_file, reference_fasta)
+                snp_only = (variant_type == "SNP")
+                mutated_seq, mutations = consensus.get_consensus(
+                    chrom, start + 1, end, snp_only=snp_only
+                )
+                return mutated_seq, mutations
+            except Exception as e:
+                log.warning(f"FastConsensus failed for {region_str}, falling back to bcftools: {e}")
+                # Fall through to bcftools
+
         # If vcf_file is not None, run bcftools consensus
         # Command to extract the reference sequence and apply mutations
         # PERF FIX: Use bcftools view -r to pre-filter VCF to region before consensus
@@ -397,6 +442,20 @@ class ExtractSeqFromBed:
             else:
                 mutated_seq = "".join(result_ref.stdout.strip().split("\n")[1:])
                 return mutated_seq
+
+        # Use FastConsensus (pysam-based) if enabled - ~100x faster than bcftools
+        if USE_FAST_CONSENSUS:
+            try:
+                consensus = get_fast_consensus(vcf_file, self.ref_fasta)
+                snp_only = (variant_type == "SNP")
+                mutated_seq, mutations = consensus.get_consensus(
+                    chrom, start + 1, end, snp_only=snp_only
+                )
+                return mutated_seq
+            except Exception as e:
+                log.warning(f"FastConsensus failed for {region_str}, falling back to bcftools: {e}")
+                # Fall through to bcftools
+
         # If vcf_file is not None, run bcftools consensus
         # PERF FIX: Use bcftools view -r to pre-filter VCF to region before consensus
         # bcftools consensus doesn't support -r, so we pipe through bcftools view first
@@ -431,7 +490,6 @@ class ExtractSeqFromBed:
 
         mutations = result.stderr.split("\n")[-2].split()[1]
         # print(f"Applied bcftools consensus for gene region {region_str}, mutations: {mutations}")
-        # print('---'*20)
         # Using the mutated sequence
         mutated_seq = "".join(result.stdout.strip().split("\n")[1:])
         return mutated_seq
