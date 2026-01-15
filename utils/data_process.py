@@ -14,27 +14,37 @@ log = logging.getLogger(__name__)
 # Set to False to fall back to bcftools subprocess calls
 USE_FAST_CONSENSUS = True
 
-# Thread-local storage for FastConsensus instances per worker
+# Process-level cache for FastConsensus instances
+# Uses a lock to prevent race conditions during initial load in DataLoader workers
 import threading
-_thread_local = threading.local()
+_consensus_cache: dict = {}
+_consensus_lock = threading.Lock()
 
 
 def get_fast_consensus(vcf_path: str, fasta_path: str) -> FastConsensus:
     """
-    Get or create FastConsensus instance for this thread/worker.
+    Get or create FastConsensus instance for this process/worker.
 
-    Uses thread-local storage to maintain one FastConsensus per VCF per worker,
-    avoiding repeated VCF loading while remaining thread-safe.
+    Uses process-level cache with locking to ensure only one VCF load
+    per worker process, even when called from multiple threads.
     """
-    if not hasattr(_thread_local, 'consensus_cache'):
-        _thread_local.consensus_cache = {}
+    global _consensus_cache
 
     cache_key = (vcf_path, fasta_path)
-    if cache_key not in _thread_local.consensus_cache:
-        log.info(f"Loading FastConsensus for {vcf_path}")
-        _thread_local.consensus_cache[cache_key] = FastConsensus(vcf_path, fasta_path)
 
-    return _thread_local.consensus_cache[cache_key]
+    # Fast path: check if already cached (no lock needed for read)
+    if cache_key in _consensus_cache:
+        return _consensus_cache[cache_key]
+
+    # Slow path: need to create, use lock to prevent duplicate loads
+    with _consensus_lock:
+        # Double-check inside lock (another thread might have created it)
+        if cache_key in _consensus_cache:
+            return _consensus_cache[cache_key]
+
+        log.info(f"Loading FastConsensus for {vcf_path}")
+        _consensus_cache[cache_key] = FastConsensus(vcf_path, fasta_path)
+        return _consensus_cache[cache_key]
 
 
 class ExtractSeqFromBed:
