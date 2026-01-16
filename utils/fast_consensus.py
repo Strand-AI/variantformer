@@ -14,6 +14,9 @@ The implementation matches bcftools consensus -H I behavior:
 """
 
 import pysam
+import pickle
+import os
+import time
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import logging
@@ -76,9 +79,32 @@ class FastConsensus:
         self._variants_by_chrom: Dict[str, Dict[int, Variant]] = {}
         self._load_variants()
 
+    def _get_cache_path(self) -> str:
+        """Get path for pickle cache file."""
+        # Store cache alongside VCF file
+        return self.vcf_path + ".variants.pkl"
+
     def _load_variants(self):
-        """Load all variants from VCF into memory index."""
+        """Load all variants from VCF into memory index, using pickle cache if available."""
+        cache_path = self._get_cache_path()
+
+        # Try loading from pickle cache first (much faster: ~10s vs ~8min)
+        if os.path.exists(cache_path):
+            try:
+                start = time.time()
+                log.info(f"Loading variants from cache: {cache_path}")
+                with open(cache_path, 'rb') as f:
+                    self._variants_by_chrom = pickle.load(f)
+                elapsed = time.time() - start
+                total_variants = sum(len(v) for v in self._variants_by_chrom.values())
+                log.info(f"Loaded {total_variants:,} variants from cache in {elapsed:.1f}s")
+                return
+            except Exception as e:
+                log.warning(f"Failed to load cache, falling back to VCF: {e}")
+
+        # Parse VCF (slow path)
         log.info(f"Loading variants from {self.vcf_path}")
+        start = time.time()
 
         vcf = pysam.VariantFile(self.vcf_path)
         variant_count = 0
@@ -127,7 +153,18 @@ class FastConsensus:
             variant_count += 1
 
         vcf.close()
-        log.info(f"Loaded {variant_count:,} variants, skipped {skipped_sv:,} structural variants")
+        elapsed = time.time() - start
+        log.info(f"Loaded {variant_count:,} variants, skipped {skipped_sv:,} structural variants in {elapsed:.1f}s")
+
+        # Save to pickle cache for next time
+        try:
+            log.info(f"Saving variants to cache: {cache_path}")
+            with open(cache_path, 'wb') as f:
+                pickle.dump(self._variants_by_chrom, f, protocol=pickle.HIGHEST_PROTOCOL)
+            cache_size = os.path.getsize(cache_path) / (1024 * 1024)
+            log.info(f"Saved cache ({cache_size:.1f} MB)")
+        except Exception as e:
+            log.warning(f"Failed to save cache: {e}")
 
     def _get_iupac_code(self, ref: str, alt: str) -> str:
         """Get IUPAC ambiguity code for heterozygous SNP."""
