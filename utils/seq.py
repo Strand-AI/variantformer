@@ -61,6 +61,55 @@ class BPEEncoder:
         encoded_seq_r, all_sequences_r = self.encode_strand(text_r)
         return encoded_seq_f, all_sequences_f, encoded_seq_r, all_sequences_r
 
+    def encode_batch_forward(self, sequences: list[str]) -> list[list[int]]:
+        """
+        Batch encode multiple sequences at once (forward strand only).
+
+        This is significantly faster than calling encode() in a loop because:
+        1. Single Python->Rust boundary crossing
+        2. Batch processing optimizations in the tokenizers library
+
+        Args:
+            sequences: List of DNA sequences to encode
+
+        Returns:
+            List of token ID lists, one per input sequence
+        """
+        if not sequences:
+            return []
+
+        # Normalize all sequences and track boundaries
+        normalized_seqs = []
+        seq_boundaries = []  # (start_idx, end_idx) for each original sequence
+
+        for seq in sequences:
+            seq_upper = seq.upper()
+            # Split on non-IUPAC characters (same as normalize())
+            parts = "".join(
+                [char if char in IUPAC_CODES else " " for char in seq_upper]
+            ).split()
+            parts = [p for p in parts if p]
+
+            start_idx = len(normalized_seqs)
+            normalized_seqs.extend(parts)
+            seq_boundaries.append((start_idx, len(normalized_seqs)))
+
+        if not normalized_seqs:
+            return [[] for _ in sequences]
+
+        # Batch encode all normalized parts at once
+        encodings = self.tokenizer.encode_batch(normalized_seqs)
+
+        # Reconstruct token IDs for each original sequence
+        results = []
+        for start_idx, end_idx in seq_boundaries:
+            token_ids = []
+            for i in range(start_idx, end_idx):
+                token_ids.extend(encodings[i].ids)
+            results.append(token_ids)
+
+        return results
+
     def decode(self, encoded_sequence):
         decoded = self.tokenizer.decode(encoded_sequence)
         return decoded.replace(" ", "")

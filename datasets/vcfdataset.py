@@ -245,41 +245,31 @@ class VCFDataset(Dataset):
                 ::-1
             ]  # reverse the cres if the gene is on the minus strand
 
-        X = []
-        attentions = []
+        # Extract sequences and labels in one pass using itertuples (10x faster than iterrows)
+        is_minus_strand = gene_info["strand"] == "-"
+        sequences = []
         ref_labels = []
-        labels = []
-        for _, cre in cres.iterrows():
-            # Get the token ids and attention mask
-            token_id, _, _, _ = (
-                self.bpe.encode([cre["sequence"], "A"])
-                if gene_info["strand"] == "+"
-                else self.bpe.encode([reverse_complement(cre["sequence"]), "A"])
-            )
-            token_id = [float(val) for val in token_id]
-            token_ids, attention_mask = self.__adjust_length(token_id)
-            X.append(
-                [
-                    token_ids,
-                ]
-            )
-            attentions.append(
-                [
-                    attention_mask,
-                ]
-            )
+        default_label_idx = self.cre_to_idx["Low-DNase"]
+        for row in cres.itertuples():
+            seq = row.sequence
+            sequences.append(reverse_complement(seq) if is_minus_strand else seq)
+            ref_labels.append(self.ref_cre_to_idx[row.cCRE])
 
-            # Process labels
-            ref_cre_label = cre["cCRE"]
-            ref_labels.append(self.ref_cre_to_idx[ref_cre_label])
-            cre_label = "Low-DNase"  # Default label is Low-DNase
-            labels.append(self.cre_to_idx[cre_label])
+        # Batch tokenize all CRE sequences at once (much faster than per-CRE encoding)
+        all_token_ids = self.bpe.encode_batch_forward(sequences)
 
-        # Convert processed data to tensors
-        X_tensor = torch.tensor(X, dtype=torch.long)
-        attention_mask_tensor = torch.tensor(attentions, dtype=torch.bool)
+        # Vectorized padding and tensor creation
+        n_cres = len(all_token_ids)
+        X_tensor = torch.full((n_cres, 1, self.max_length), self.pad_token_id, dtype=torch.long)
+        attention_mask_tensor = torch.ones((n_cres, 1, self.max_length), dtype=torch.bool)
+
+        for i, token_ids in enumerate(all_token_ids):
+            seq_len = min(len(token_ids), self.max_length)
+            X_tensor[i, 0, :seq_len] = torch.tensor(token_ids[:seq_len], dtype=torch.long)
+            attention_mask_tensor[i, 0, :seq_len] = False  # 0 = not padded
+
         ref_labels_tensor = torch.tensor(ref_labels, dtype=torch.long)
-        labels_tensor = torch.tensor(labels, dtype=torch.long)
+        labels_tensor = torch.full((n_cres,), default_label_idx, dtype=torch.long)
         return X_tensor, attention_mask_tensor, ref_labels_tensor, labels_tensor
 
     def _get_gene(self, gene_id: str, gene_info: dict, vcf_path: str) -> pd.DataFrame:

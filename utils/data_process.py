@@ -321,11 +321,65 @@ class ExtractSeqFromBed:
     def process_subject(
         self, vcf_file: str, bed_regions: pd.DataFrame, variant_type: str = None
     ):
-        """Process each subject's VCF file and apply mutations to the reference sequence."""
+        """Process each subject's VCF file and apply mutations to the reference sequence.
+
+        Optimized to use serial processing when FastConsensus is available (fast dict lookup),
+        and only use parallel processing when falling back to bcftools (slow subprocess).
+        """
+        # When FastConsensus is enabled and VCF is provided, use optimized serial processing
+        # FastConsensus uses dict lookup which is fast enough that parallel overhead hurts
+        if USE_FAST_CONSENSUS and vcf_file:
+            return self._process_subject_fast(vcf_file, bed_regions, variant_type)
+
+        # Fall back to parallel processing for bcftools (slow subprocess calls benefit from parallelism)
+        return self._process_subject_parallel(vcf_file, bed_regions, variant_type)
+
+    def _process_subject_fast(
+        self, vcf_file: str, bed_regions: pd.DataFrame, variant_type: str = None
+    ):
+        """Fast serial processing using FastConsensus (optimized for dict lookups)."""
+        # Pre-fetch FastConsensus to ensure it's cached
+        consensus = get_fast_consensus(vcf_file, self.ref_fasta)
+        snp_only = (variant_type == "SNP")
+
+        D = []
+        # Use itertuples for faster iteration (10x faster than iterrows)
+        for region in bed_regions.itertuples():
+            chrom = region.chrom
+            start = max(0, int(region.start) - self.neighbour_hood)
+            end = int(region.end) + self.neighbour_hood
+
+            try:
+                mutated_seq, mutations = consensus.get_consensus(
+                    chrom, start + 1, end, snp_only=snp_only
+                )
+                if mutated_seq:
+                    D.append({
+                        "chrom": chrom,
+                        "start_cre": start,
+                        "end_cre": end,
+                        "sequence": mutated_seq,
+                        "cCRE": region.cCRE,
+                    })
+            except Exception as e:
+                log.warning(f"FastConsensus failed for {chrom}:{start}-{end}: {e}")
+                continue
+
+        df = pd.DataFrame(D)
+        if len(df) > 0 and not df["start_cre"].is_monotonic_increasing:
+            df = df.sort_values(by=["chrom", "start_cre"], ascending=True).reset_index(
+                drop=True
+            )
+        return df
+
+    def _process_subject_parallel(
+        self, vcf_file: str, bed_regions: pd.DataFrame, variant_type: str = None
+    ):
+        """Parallel processing for bcftools fallback (slow subprocess calls)."""
         ncpus = os.cpu_count()
         args_list = [
             (region, vcf_file, self.ref_fasta, variant_type)
-            for _, region in bed_regions.iterrows()
+            for region in bed_regions.itertuples()  # Use itertuples for speed
         ]
 
         # Check if we're in a DataLoader worker context
@@ -360,7 +414,7 @@ class ExtractSeqFromBed:
         else:
             # Normal context - use more workers
             max_workers = min(ncpus // 3 + 1, len(bed_regions))
-            print(f"Normal context: using {max_workers} workers")
+            log.info(f"Normal context: using {max_workers} workers")
 
             approaches = [
                 ("joblib.Parallel", self._try_joblib_parallel),
@@ -383,19 +437,19 @@ class ExtractSeqFromBed:
                 ):
                     continue  # Expected failure, no logging
                 else:
-                    print(f"{name} failed: {e}")
+                    log.warning(f"{name} failed: {e}")
                 continue
 
         # If all methods failed, fall back to serial processing
         if results is None:
-            print(f"All methods failed, processing {len(bed_regions)} regions serially")
+            log.warning(f"All methods failed, processing {len(bed_regions)} regions serially")
             results = self._serial_processing(args_list)
         D = []
         for result in results:
             if result[0]:
                 D.append(result[0])
         df = pd.DataFrame(D)
-        if not df["start_cre"].is_monotonic_increasing:
+        if len(df) > 0 and not df["start_cre"].is_monotonic_increasing:
             df = df.sort_values(by=["chrom", "start_cre"], ascending=True).reset_index(
                 drop=True
             )
